@@ -145,7 +145,7 @@ function renderResults(filter = 'all') {
 $$('.filter').forEach((button) => button.addEventListener('click', () => { $$('.filter').forEach((b) => b.classList.toggle('active', b === button)); renderResults(button.dataset.filter); }));
 $('#downloadResults').addEventListener('click', () => {
   const csv = ['Title,Decision,Confidence,Review status', ...state.records.map((r) => `"${r.title.replaceAll('"','""')}","${r.answer}",${r.confidence}%,${r.status === 'ready' ? 'Ready to use' : 'Needs review'}`)].join('\n');
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const link = document.createElement('a'); link.href = url; link.download = 'laya-studio-results.csv'; link.click(); URL.revokeObjectURL(url);
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const link = document.createElement('a'); link.href = url; link.download = 'thinkfast-studio-results.csv'; link.click(); URL.revokeObjectURL(url);
 });
 
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
