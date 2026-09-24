@@ -18,7 +18,7 @@ class InstallRequest(BaseModel):
 class AnalyzeRequest(BaseModel):
     records: list[dict]
 
-def questions_for_laya(questions: list[dict]) -> dict:
+def questions_for_local_model(questions: list[dict]) -> dict:
     built = {}
     for index, question in enumerate(questions):
         kind = question.get("type", "choice")
@@ -51,7 +51,7 @@ def analyze(request: AnalyzeRequest):
         raise HTTPException(status_code=409, detail="Install the decision engine first.")
     results = []
     for record in request.records:
-        output = router.predict(record["text"], questions_for_laya(record["questions"]))
+        output = router.predict(record["text"], questions_for_local_model(record["questions"]))
         first = next(iter(output["answers"].values()))
         answer = first.get("choice", first.get("noul", first.get("score", "Needs review")))
         confidence = round(float(first.get("confidence", first.get("probability", 0.5))) * 100)
