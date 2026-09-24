@@ -150,6 +150,7 @@ $('#downloadResults').addEventListener('click', () => {
 
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
 $('#startDownload').addEventListener('click', () => $('#settingsDialog').showModal());
+$('#startAdvanced').addEventListener('click', () => $('#advancedDialog').showModal());
 $('#aboutButton').addEventListener('click', () => $('#aboutDialog').showModal());
 $('#openAdvanced').addEventListener('click', () => { $('#settingsDialog').close(); $('#advancedDialog').showModal(); });
 
