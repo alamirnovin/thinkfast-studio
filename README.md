@@ -1,6 +1,6 @@
 # ThinkFast Studio
 
-A warm, plain-language Tauri desktop interface for Laya decision workflows.
+A warm, plain-language Tauri desktop interface for structured decision workflows.
 
 Created by Alamir Novin.
 
@@ -26,7 +26,7 @@ The release app will be a standard macOS `.dmg` and Windows `.msi`/installer:
 
 Bundling the full model inside every installer is possible but would make the initial download very large. The recommended experience is to ship the small app installer and let the app download the selected model with a single friendly button on first use.
 
-Long documents are split into manageable passages before Laya evaluates them. The app will combine those passage-level decisions into one document-level result and identify passages that need a human look.
+Long documents are split into manageable passages before the selected local model evaluates them. The app combines those passage-level decisions into one document-level result and identifies passages that need a human look.
 
 ## Develop locally
 
