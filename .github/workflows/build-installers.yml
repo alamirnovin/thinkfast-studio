@@ -1,0 +1,39 @@
+name: Build ThinkFast Studio installers
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            label: macos-apple-silicon
+          - platform: macos-13
+            target: x86_64-apple-darwin
+            label: macos-intel
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+      - name: Install app packages
+        run: npm install
+      - name: Build installer
+        run: npm run tauri build -- --target ${{ matrix.target }}
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: thinkfast-studio-${{ matrix.label }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/**
