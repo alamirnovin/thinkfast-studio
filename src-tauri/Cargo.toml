@@ -1,0 +1,16 @@
+[package]
+name = "thinking-fast-studio"
+version = "0.1.0"
+description = "A friendly desktop interface for Laya"
+authors = ["You"]
+edition = "2021"
+
+[lib]
+name = "thinking_fast_studio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
