@@ -1,4 +1,4 @@
-"""Private local Laya engine used by ThinkFast Studio's desktop installer."""
+"""Private local decision engine used by ThinkFast Studio's desktop installer."""
 from __future__ import annotations
 
 from threading import Lock
