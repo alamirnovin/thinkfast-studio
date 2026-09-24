@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f4ee" />
+    <title>ThinkFast Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:opsz,wght@6..120,600;6..120,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#decisions" aria-label="ThinkFast Studio home">
+          <span class="brand-mark">L</span>
+          <span><strong>ThinkFast</strong><em>Studio</em></span>
+        </a>
+        <p class="sidebar-note">Thoughtful decisions from text—without the technical ceremony.</p>
+        <nav aria-label="Primary navigation">
+          <button class="nav-item active" data-page="decisions"><span>01</span>Decision choices</button>
+          <button class="nav-item" data-page="builder"><span>02</span>Question builder</button>
+          <button class="nav-item" data-page="batch"><span>03</span>Documents to analyze</button>
+          <button class="nav-item" data-page="results"><span>04</span>Results &amp; audit</button>
+        </nav>
+        <div class="sidebar-footer">
+          <button class="quiet-button" id="settingsButton">Connection settings</button>
+          <button class="quiet-button about-link" id="aboutButton">About ThinkFast Studio</button>
+          <p><i></i> Decision engine not installed</p>
+        </div>
+      </aside>
+
+      <main>
+        <section class="page active" id="decisions">
+          <div class="eyebrow">Decision choices</div>
+          <div class="page-heading split-heading">
+            <div><h1>Ask a clear question.<br />See a useful answer.</h1><p>Start with a piece of text. Then choose the kinds of decisions you want Laya to make.</p></div>
+            <button class="primary-button" data-go="builder">Build questions <span>→</span></button>
+          </div>
+          <div class="decision-grid" id="decisionCards">
+            <button class="decision-card selected" data-type="choice"><span class="card-number">A</span><strong>Choose between options</strong><small>“Which topic fits this text best?”</small><b>Multiple choice</b></button>
+            <button class="decision-card" data-type="score"><span class="card-number">↗</span><strong>Judge a scale</strong><small>“How urgent does this seem?”</small><b>Guided score</b></button>
+            <button class="decision-card" data-type="yesno"><span class="card-number">✓</span><strong>Answer yes or no</strong><small>“Does this need a person to review it?”</small><b>Clear check</b></button>
+          </div>
+          <div class="sample-row">
+            <div class="sample-copy"><span class="eyebrow">A small example</span><h2>Turn a pile of words into decisions you can review.</h2><p>Use a support message, an abstract, feedback, a transcript, or any other written record.</p></div>
+            <div class="sample-paper"><span>TEXT TO REVIEW</span><p>“I was charged twice for March. Please refund the duplicate payment as soon as possible.”</p><div><label>Possible decisions</label><mark>Billing issue</mark><mark>High urgency</mark><mark>Refund requested</mark></div></div>
+          </div>
+        </section>
+
+        <section class="page" id="builder">
+          <div class="eyebrow">Question builder</div>
+          <div class="page-heading"><div><h1>Make your questions<br />feel natural.</h1><p>You write the question as you would ask a colleague. Laya handles the structure in the background.</p></div></div>
+          <div class="builder-layout">
+            <div class="builder-panel">
+              <label class="field-label" for="questionText">What do you want to know?</label>
+              <textarea id="questionText" rows="3" placeholder="For example: Which team should take care of this?">Which team should take care of this?</textarea>
+              <div class="field-label gap-label">What kind of answer should it give?</div>
+              <div class="answer-types" id="answerTypes">
+                <button class="answer-type active" data-answer="choice"><b>Choose one</b><span>Pick the best option</span></button>
+                <button class="answer-type" data-answer="score"><b>Use a scale</b><span>Place it from low to high</span></button>
+                <button class="answer-type" data-answer="yesno"><b>Yes or no</b><span>Make a simple check</span></button>
+              </div>
+              <div id="optionsArea">
+                <div class="field-label gap-label">What are the possible answers?</div>
+                <div class="option-list" id="optionList">
+                  <label><span>1</span><input value="Billing" aria-label="First answer option" /></label>
+                  <label><span>2</span><input value="Technical support" aria-label="Second answer option" /></label>
+                  <label><span>3</span><input value="Something else" aria-label="Third answer option" /></label>
+                </div>
+                <button class="text-button" id="addOption">+ Add another answer</button>
+              </div>
+              <button class="primary-button save-question" id="saveQuestion">Save this question <span>→</span></button>
+            </div>
+            <aside class="friendly-tip"><span>✦</span><h3>A good question is specific.</h3><p>Describe what makes each answer different. That gives Laya a fair basis for the choice.</p><hr /><small>YOU CAN EDIT THIS LATER</small></aside>
+          </div>
+          <div class="saved-questions"><div><span class="eyebrow">Your decision set</span><h2 id="questionSetCount">1 question ready</h2></div><div id="savedQuestionChips"><span>Which team should take care of this?</span></div></div>
+        </section>
+
+        <section class="page" id="batch">
+          <div class="eyebrow">Documents to analyze</div>
+          <div class="page-heading"><div><h1>Review many records,<br />without losing the human view.</h1><p>Bring in a spreadsheet. Choose the column containing the text. Laya applies your questions to each row.</p></div></div>
+          <div class="drop-zone" id="dropZone"><div class="upload-icon">↑</div><h2>Drop a document or spreadsheet here</h2><p>or <button class="text-button" id="chooseFile">choose a file from your computer</button></p><small>CSV, text, and Word documents are welcome. Your original stays unchanged.</small><input id="fileInput" type="file" accept=".csv,.txt,.doc,.docx,text/csv,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden /></div>
+          <p class="document-note"><span>✦</span> Long documents are read in short passages, then brought back together into one review. Nothing is sent as one unreadable wall of text.</p>
+          <div class="batch-preview hidden" id="batchPreview"><div class="preview-top"><div><span class="eyebrow">Ready to review</span><h2 id="fileName">records.csv</h2><p id="rowCount">0 rows found</p></div><button class="primary-button" id="runBatch">Run analysis <span>→</span></button></div><div class="column-choice"><span>Which column contains the text you want to review?</span><select id="textColumn"></select></div><div class="table-wrap"><table id="previewTable"></table></div></div>
+        </section>
+
+        <section class="page" id="results">
+          <div class="eyebrow">Results &amp; audit</div>
+          <div class="page-heading split-heading"><div><h1>Answers you can<br />understand and trust.</h1><p>See the result, how certain it is, and which records deserve a closer human look.</p></div><button class="primary-button" id="downloadResults">Download results <span>↓</span></button></div>
+          <div class="result-summary"><article><span>RECORDS REVIEWED</span><strong id="recordsReviewed">3</strong><small>in this session</small></article><article><span>READY TO USE</span><strong id="readyCount">2</strong><small>high-confidence answers</small></article><article class="warm"><span>CHECK AGAIN</span><strong id="reviewCount">1</strong><small>needs your judgment</small></article></div>
+          <div class="filter-bar"><button class="filter active" data-filter="all">All records</button><button class="filter" data-filter="ready">Ready to use</button><button class="filter" data-filter="review">Needs review</button><span>Sorted by confidence</span></div>
+          <div class="results-list" id="resultsList"></div>
+        </section>
+      </main>
+    </div>
+    <dialog id="settingsDialog"><form method="dialog"><button class="close" value="cancel" aria-label="Close">×</button><span class="eyebrow">Decision engine</span><h2>Set up ThinkFast</h2><p>Download Laya once. ThinkFast keeps it on your computer and uses it privately whenever you analyze a document.</p><button class="primary-button" id="installEngine" type="button">Download decision engine <span>↓</span></button><p class="install-status" id="installStatus">About 1 GB for the English model. You only need to do this once.</p><menu><button class="secondary-button" value="cancel">Not now</button></menu></form></dialog>
+    <dialog id="aboutDialog"><form method="dialog"><button class="close" value="cancel" aria-label="Close">×</button><span class="eyebrow">About</span><h2>ThinkFast Studio</h2><p>A calm, human-friendly place to turn text into clear, reviewable decisions with Laya.</p><div class="about-credit"><span>CREATED BY</span><strong>Alamir Novin</strong></div><menu><button class="primary-button" value="default">Close</button></menu></form></dialog>
+    <script defer src="./src/main.js"></script>
+  </body>
+</html>
