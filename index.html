@@ -14,7 +14,7 @@
     <div class="app-shell">
       <aside class="sidebar">
         <a class="brand" href="#decisions" aria-label="ThinkFast Studio home">
-          <span class="brand-mark">L</span>
+          <span class="brand-mark">TFS</span>
           <span><strong>ThinkFast</strong><em>Studio</em></span>
         </a>
         <p class="sidebar-note">Thoughtful decisions from text—without the technical ceremony.</p>
@@ -25,7 +25,7 @@
           <button class="nav-item" data-page="results"><span>04</span>Results &amp; audit</button>
         </nav>
         <div class="sidebar-footer">
-          <button class="quiet-button" id="settingsButton">Connection settings</button>
+          <button class="quiet-button" id="settingsButton">Model & advanced settings</button>
           <button class="quiet-button about-link" id="aboutButton">About ThinkFast Studio</button>
           <p><i></i> Decision engine not installed</p>
         </div>
@@ -35,7 +35,7 @@
         <section class="page active" id="decisions">
           <div class="eyebrow">Decision choices</div>
           <div class="page-heading split-heading">
-            <div><h1>Ask a clear question.<br />See a useful answer.</h1><p>Start with a piece of text. Then choose the kinds of decisions you want Laya to make.</p></div>
+            <div><h1>Ask a clear question.<br />See a useful answer.</h1><p>Start with a piece of text. Then choose the kinds of decisions you want a fast decision model to make.</p></div>
             <button class="primary-button" data-go="builder">Build questions <span>→</span></button>
           </div>
           <div class="decision-grid" id="decisionCards">
@@ -51,7 +51,7 @@
 
         <section class="page" id="builder">
           <div class="eyebrow">Question builder</div>
-          <div class="page-heading"><div><h1>Make your questions<br />feel natural.</h1><p>You write the question as you would ask a colleague. Laya handles the structure in the background.</p></div></div>
+          <div class="page-heading"><div><h1>Make your questions<br />feel natural.</h1><p>You write the question as you would ask a colleague. ThinkFast handles the structure in the background.</p></div></div>
           <div class="builder-layout">
             <div class="builder-panel">
               <label class="field-label" for="questionText">What do you want to know?</label>
@@ -73,14 +73,14 @@
               </div>
               <button class="primary-button save-question" id="saveQuestion">Save this question <span>→</span></button>
             </div>
-            <aside class="friendly-tip"><span>✦</span><h3>A good question is specific.</h3><p>Describe what makes each answer different. That gives Laya a fair basis for the choice.</p><hr /><small>YOU CAN EDIT THIS LATER</small></aside>
+            <aside class="friendly-tip"><span>✦</span><h3>A good question is specific.</h3><p>Describe what makes each answer different. That gives any decision model a fair basis for the choice.</p><hr /><small>YOU CAN EDIT THIS LATER</small></aside>
           </div>
           <div class="saved-questions"><div><span class="eyebrow">Your decision set</span><h2 id="questionSetCount">1 question ready</h2></div><div id="savedQuestionChips"><span>Which team should take care of this?</span></div></div>
         </section>
 
         <section class="page" id="batch">
           <div class="eyebrow">Documents to analyze</div>
-          <div class="page-heading"><div><h1>Review many records,<br />without losing the human view.</h1><p>Bring in a spreadsheet. Choose the column containing the text. Laya applies your questions to each row.</p></div></div>
+          <div class="page-heading"><div><h1>Review many records,<br />without losing the human view.</h1><p>Bring in a spreadsheet. Choose the column containing the text. Your selected decision model applies your questions to each row.</p></div></div>
           <div class="drop-zone" id="dropZone"><div class="upload-icon">↑</div><h2>Drop a document or spreadsheet here</h2><p>or <button class="text-button" id="chooseFile">choose a file from your computer</button></p><small>CSV, text, and Word documents are welcome. Your original stays unchanged.</small><input id="fileInput" type="file" accept=".csv,.txt,.doc,.docx,text/csv,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden /></div>
           <p class="document-note"><span>✦</span> Long documents are read in short passages, then brought back together into one review. Nothing is sent as one unreadable wall of text.</p>
           <div class="batch-preview hidden" id="batchPreview"><div class="preview-top"><div><span class="eyebrow">Ready to review</span><h2 id="fileName">records.csv</h2><p id="rowCount">0 rows found</p></div><button class="primary-button" id="runBatch">Run analysis <span>→</span></button></div><div class="column-choice"><span>Which column contains the text you want to review?</span><select id="textColumn"></select></div><div class="table-wrap"><table id="previewTable"></table></div></div>
@@ -95,8 +95,9 @@
         </section>
       </main>
     </div>
-    <dialog id="settingsDialog"><form method="dialog"><button class="close" value="cancel" aria-label="Close">×</button><span class="eyebrow">Decision engine</span><h2>Set up ThinkFast</h2><p>Download Laya once. ThinkFast keeps it on your computer and uses it privately whenever you analyze a document.</p><button class="primary-button" id="installEngine" type="button">Download decision engine <span>↓</span></button><p class="install-status" id="installStatus">About 1 GB for the English model. You only need to do this once.</p><menu><button class="secondary-button" value="cancel">Not now</button></menu></form></dialog>
-    <dialog id="aboutDialog"><form method="dialog"><button class="close" value="cancel" aria-label="Close">×</button><span class="eyebrow">About</span><h2>ThinkFast Studio</h2><p>A calm, human-friendly place to turn text into clear, reviewable decisions with Laya.</p><div class="about-credit"><span>CREATED BY</span><strong>Alamir Novin</strong></div><menu><button class="primary-button" value="default">Close</button></menu></form></dialog>
+    <dialog id="settingsDialog"><form method="dialog"><button class="close" value="cancel" aria-label="Close">×</button><span class="eyebrow">Recommended local model</span><h2>Set up ThinkFast</h2><p>Install the recommended English decision model once. It stays on your computer and processes documents privately.</p><button class="primary-button" id="installEngine" type="button">Install recommended local model <span>↓</span></button><p class="install-status" id="installStatus">About 1 GB. You only need to do this once.</p><button class="advanced-link" id="openAdvanced" type="button">Advanced: add or manage other System‑1 models →</button><menu><button class="secondary-button" value="cancel">Not now</button></menu></form></dialog>
+    <dialog id="advancedDialog"><form method="dialog" class="advanced-form"><button class="close" value="cancel" aria-label="Close">×</button><span class="eyebrow">Advanced settings</span><h2>Your System‑1 workbench</h2><p class="advanced-intro">Manage local models, add trusted providers, and tailor a structured decision workflow. API keys remain on this computer.</p><div class="advanced-tabs"><button class="advanced-tab active" type="button" data-advanced="models">Models</button><button class="advanced-tab" type="button" data-advanced="providers">Providers</button><button class="advanced-tab" type="button" data-advanced="workflow">Workflow</button><button class="advanced-tab" type="button" data-advanced="quality">Quality</button></div><section class="advanced-panel active" data-panel="models"><div class="model-row active-model"><div><b>Recommended local model</b><small>English · local · ready after installation</small></div><button class="secondary-button" type="button" data-model="english">Use this</button></div><div class="model-row"><div><b>Multilingual local model</b><small>For non-English text and language routing</small></div><button class="secondary-button" type="button" data-model="multilingual">Add model</button></div><div class="model-row"><div><b>Specialised decision model</b><small>Use a fine-tuned model profile when available</small></div><button class="secondary-button" type="button" data-model="specialised">Add profile</button></div></section><section class="advanced-panel" data-panel="providers"><p class="panel-note">Choose a provider, then add its endpoint and API key. Connections are tested before use.</p><div class="provider-grid"><button class="provider-card" type="button" data-provider="JEV"><b>JEV</b><span>System‑1 API</span></button><button class="provider-card" type="button" data-provider="OpenAI-compatible"><b>OpenAI-compatible</b><span>Compatible endpoint</span></button><button class="provider-card" type="button" data-provider="Custom REST"><b>Custom REST</b><span>Decision API</span></button></div><label class="field-label gap-label">Selected provider</label><input id="providerName" placeholder="Choose a provider above" /><label class="field-label gap-label">Endpoint</label><input id="providerEndpoint" placeholder="https://…" /><label class="field-label gap-label">API key</label><input id="providerKey" type="password" placeholder="Stored only on this computer" /><button class="primary-button save-provider" type="button" id="saveProvider">Save & test connection <span>→</span></button><p class="install-status" id="providerStatus"></p></section><section class="advanced-panel" data-panel="workflow"><div class="setting-grid"><label>Input source<select id="inputMode"><option>Documents and spreadsheets</option><option>Pasted text</option><option>Structured form fields</option><option>Single-record test bench</option></select></label><label>Decision strategy<select id="decisionStrategy"><option>One clear decision</option><option>Multiple questions</option><option>Two-stage classification</option><option>Shortlist large option sets</option></select></label><label>Output detail<select id="outputDetail"><option>Answer + confidence</option><option>Full option distribution</option><option>Audit-ready export</option></select></label><label>Language<select id="languageRoute"><option>Automatic routing</option><option>English</option><option>Multilingual</option></select></label></div><p class="panel-note">These choices are saved as a local workspace and can be changed per project.</p></section><section class="advanced-panel" data-panel="quality"><div class="setting-grid"><label>Confidence threshold<input id="confidenceThreshold" type="number" min="0" max="100" value="75" /></label><label>Low-confidence action<select id="reviewAction"><option>Send to review queue</option><option>Keep but flag</option><option>Exclude from export</option></select></label><label>Batch size<input id="batchSize" type="number" min="1" max="1000" value="25" /></label><label>Model comparison<select id="comparisonMode"><option>Off</option><option>Compare two saved models</option></select></label></div><p class="panel-note">Use a labelled test set before relying on a model for an important decision.</p></section><menu><button class="secondary-button" value="cancel">Close</button><button class="primary-button" value="default" id="saveAdvanced">Save workspace</button></menu></form></dialog>
+    <dialog id="aboutDialog"><form method="dialog"><button class="close" value="cancel" aria-label="Close">×</button><span class="eyebrow">About</span><h2>ThinkFast Studio</h2><p>A calm, human-friendly place to turn text into clear, reviewable decisions using local or connected System‑1 models.</p><div class="about-credit"><span>CREATED BY</span><strong>Alamir Novin</strong></div><menu><button class="primary-button" value="default">Close</button></menu></form></dialog>
     <script defer src="./src/main.js"></script>
   </body>
 </html>
