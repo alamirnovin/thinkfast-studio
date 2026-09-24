@@ -19,6 +19,6 @@
     "active": true,
     "targets": "all",
     "externalBin": ["binaries/thinkfast-engine"],
-    "icon": ["icons/icon.png"]
+    "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"]
   }
 }
