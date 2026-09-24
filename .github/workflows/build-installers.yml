@@ -28,6 +28,14 @@ jobs:
           node-version: 22
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build local decision engine
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r engine/requirements.txt
+          python engine/build_sidecar.py ${{ matrix.target }}
       - name: Install app packages
         run: npm install
       - name: Build installer
