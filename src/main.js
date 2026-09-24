@@ -42,7 +42,7 @@ function optionFields() {
 function updateOptionArea(answer) {
   const area = $('#optionsArea');
   if (answer === 'yesno') {
-    area.innerHTML = '<div class="friendly-tip" style="margin-top:26px"><h3>Nice and simple.</h3><p>Laya will answer this as yes or no, with a confidence level so you can decide when a closer look is needed.</p></div>';
+    area.innerHTML = '<div class="friendly-tip" style="margin-top:26px"><h3>Nice and simple.</h3><p>Your selected model will answer this as yes or no, with a confidence level so you can decide when a closer look is needed.</p></div>';
   } else if (answer === 'score') {
     area.innerHTML = '<div class="field-label gap-label">What does each end of the scale mean?</div><div class="option-list"><label><span>LOW</span><input value="Not urgent" /></label><label><span>HIGH</span><input value="Needs attention soon" /></label></div>';
   } else {
@@ -150,9 +150,40 @@ $('#downloadResults').addEventListener('click', () => {
 
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
 $('#aboutButton').addEventListener('click', () => $('#aboutDialog').showModal());
+$('#openAdvanced').addEventListener('click', () => { $('#settingsDialog').close(); $('#advancedDialog').showModal(); });
+
+$$('.advanced-tab').forEach((tab) => tab.addEventListener('click', () => {
+  $$('.advanced-tab').forEach((item) => item.classList.toggle('active', item === tab));
+  $$('.advanced-panel').forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === tab.dataset.advanced));
+}));
+
+$$('.provider-card').forEach((card) => card.addEventListener('click', () => {
+  $$('.provider-card').forEach((item) => item.classList.toggle('selected', item === card));
+  $('#providerName').value = card.dataset.provider;
+}));
+
+$$('[data-model]').forEach((button) => button.addEventListener('click', () => {
+  localStorage.setItem('thinkfast-model', button.dataset.model);
+  $$('.model-row').forEach((row) => row.classList.remove('active-model'));
+  button.closest('.model-row').classList.add('active-model');
+  button.textContent = 'Selected';
+}));
+
+$('#saveProvider').addEventListener('click', () => {
+  const name = $('#providerName').value.trim();
+  const endpoint = $('#providerEndpoint').value.trim();
+  if (!name || !endpoint) { $('#providerStatus').textContent = 'Choose a provider and enter its endpoint first.'; return; }
+  localStorage.setItem('thinkfast-provider', JSON.stringify({ name, endpoint }));
+  $('#providerStatus').textContent = 'Connection profile saved. Add your API key when you are ready to test this provider.';
+});
+
+$('#saveAdvanced').addEventListener('click', () => {
+  const workspace = Object.fromEntries(['inputMode','decisionStrategy','outputDetail','languageRoute','confidenceThreshold','reviewAction','batchSize','comparisonMode'].map((id) => [id, $(`#${id}`).value]));
+  localStorage.setItem('thinkfast-workspace', JSON.stringify(workspace));
+});
 $('#installEngine').addEventListener('click', async () => {
   $('#installEngine').textContent = 'Downloading…';
-  try { await engine.install(); $('#installEngine').textContent = 'Decision engine ready'; $('#installStatus').textContent = 'Laya is installed and ready to analyze documents on this computer.'; }
+  try { await engine.install(); $('#installEngine').textContent = 'Local model ready'; $('#installStatus').textContent = 'Your recommended local model is installed and ready to analyze documents privately.'; }
   catch (error) { $('#installEngine').textContent = 'Try download again'; $('#installStatus').textContent = 'The download could not start. Please check your internet connection.'; }
 });
 renderQuestionChips(); renderResults();
