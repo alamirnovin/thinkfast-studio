@@ -39,9 +39,7 @@ jobs:
           python engine/build_sidecar.py ${{ matrix.target }}
       - name: Install app packages
         run: npm install
-      - name: Generate platform application icons
-        run: npm run tauri icon src-tauri/icons/icon.svg
-      - name: Restore Tauri's base icon
+      - name: Generate application icons
         run: python engine/generate_icon.py
       - name: Build installer
         run: npm run tauri build -- --target ${{ matrix.target }}
