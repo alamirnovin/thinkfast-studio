@@ -39,6 +39,8 @@ jobs:
           python engine/build_sidecar.py ${{ matrix.target }}
       - name: Install app packages
         run: npm install
+      - name: Generate platform application icons
+        run: npm run tauri icon src-tauri/icons/icon.svg
       - name: Build installer
         run: npm run tauri build -- --target ${{ matrix.target }}
       - name: Upload installer
