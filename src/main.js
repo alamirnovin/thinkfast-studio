@@ -5,6 +5,17 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+const engine = {
+  install: async () => {
+    const response = await fetch('http://127.0.0.1:8765/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ multilingual: false }) });
+    if (!response.ok) throw new Error('The decision engine could not be installed.');
+  },
+  analyze: async (records) => {
+    const response = await fetch('http://127.0.0.1:8765/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ records }) });
+    if (!response.ok) throw new Error('Install the decision engine before analyzing documents.');
+    return response.json();
+  }
+};
 
 function goTo(page) {
   $$('.page').forEach((section) => section.classList.toggle('active', section.id === page));
@@ -110,19 +121,16 @@ $('#chooseFile').addEventListener('click', () => $('#fileInput').click());
 $('#fileInput').addEventListener('change', (event) => { if (event.target.files[0]) showPreview(event.target.files[0]); });
 
 $('#runBatch').addEventListener('click', async () => {
-  if (!window.thinkFast?.analyze) {
-    $('#settingsDialog').showModal();
-    return;
-  }
   const { headers, rows } = state.upload;
   const textIndex = Number($('#textColumn').value);
   const titleIndex = Math.max(0, headers.findIndex((h) => /title|name|id/i.test(h)));
   $('#runBatch').textContent = 'Reading your documents…';
-  state.records = await window.thinkFast.analyze(rows.map((row, i) => ({
+  try { state.records = await engine.analyze(rows.map((row, i) => ({
     title: row[titleIndex] || `Document ${i + 1}`,
     text: row[textIndex],
     questions: state.questions
   })));
+  } catch (error) { $('#settingsDialog').showModal(); $('#runBatch').innerHTML = 'Run analysis <span>→</span>'; return; }
   $('#runBatch').innerHTML = 'Run analysis <span>→</span>';
   renderResults(); goTo('results');
 });
@@ -143,10 +151,8 @@ $('#downloadResults').addEventListener('click', () => {
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
 $('#aboutButton').addEventListener('click', () => $('#aboutDialog').showModal());
 $('#installEngine').addEventListener('click', async () => {
-  if (!window.thinkFast?.installEngine) { $('#installStatus').textContent = 'Install the desktop app to download the decision engine.'; return; }
   $('#installEngine').textContent = 'Downloading…';
-  await window.thinkFast.installEngine();
-  $('#installEngine').textContent = 'Decision engine ready';
-  $('#installStatus').textContent = 'Laya is installed and ready to analyze documents on this computer.';
+  try { await engine.install(); $('#installEngine').textContent = 'Decision engine ready'; $('#installStatus').textContent = 'Laya is installed and ready to analyze documents on this computer.'; }
+  catch (error) { $('#installEngine').textContent = 'Try download again'; $('#installStatus').textContent = 'The download could not start. Please check your internet connection.'; }
 });
 renderQuestionChips(); renderResults();
