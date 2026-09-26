@@ -8,7 +8,12 @@ from pydantic import BaseModel
 from laya import Router
 
 app = FastAPI(title="ThinkFast Studio Engine")
-app.add_middleware(CORSMiddleware, allow_origins=["http://tauri.localhost", "https://tauri.localhost"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://tauri.localhost", "https://tauri.localhost", "tauri://localhost", "http://localhost:1420"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 router: Router | None = None
 lock = Lock()
 
