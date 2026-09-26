@@ -5,17 +5,56 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+const engineUrl = 'http://127.0.0.1:8765';
 const engine = {
+  health: async () => {
+    const response = await fetch(`${engineUrl}/health`);
+    if (!response.ok) throw new Error('The local engine did not respond.');
+    return response.json();
+  },
   install: async () => {
-    const response = await fetch('http://127.0.0.1:8765/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ multilingual: false }) });
-    if (!response.ok) throw new Error('The decision engine could not be installed.');
+    const response = await fetch(`${engineUrl}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ multilingual: false }) });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.detail || 'The model download could not be completed.');
+    }
+    return response.json();
   },
   analyze: async (records) => {
-    const response = await fetch('http://127.0.0.1:8765/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ records }) });
-    if (!response.ok) throw new Error('Install the decision engine before analyzing documents.');
+    const response = await fetch(`${engineUrl}/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ records }) });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.detail || 'Install the decision engine before analyzing documents.');
+    }
     return response.json();
   }
 };
+
+function setEngineIndicator(text, ready = false) {
+  const indicator = $('#engineIndicator');
+  indicator.innerHTML = `<i></i> ${escapeHtml(text)}`;
+  indicator.classList.toggle('engine-ready', ready);
+}
+
+async function waitForEngine() {
+  let lastError;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    try { return await engine.health(); }
+    catch (error) { lastError = error; await new Promise((resolve) => setTimeout(resolve, 500)); }
+  }
+  throw lastError || new Error('The local engine did not start.');
+}
+
+async function refreshEngineStatus() {
+  try {
+    const health = await waitForEngine();
+    setEngineIndicator(health.ready ? 'Decision engine ready' : 'Decision engine ready to download', health.ready);
+    return health;
+  } catch {
+    setEngineIndicator('Decision engine is unavailable');
+    return null;
+  }
+}
 
 function goTo(page) {
   $$('.page').forEach((section) => section.classList.toggle('active', section.id === page));
@@ -121,6 +160,7 @@ $('#chooseFile').addEventListener('click', () => $('#fileInput').click());
 $('#fileInput').addEventListener('change', (event) => { if (event.target.files[0]) showPreview(event.target.files[0]); });
 
 $('#runBatch').addEventListener('click', async () => {
+  if (!state.upload) { goTo('batch'); return; }
   const { headers, rows } = state.upload;
   const textIndex = Number($('#textColumn').value);
   const titleIndex = Math.max(0, headers.findIndex((h) => /title|name|id/i.test(h)));
@@ -130,7 +170,7 @@ $('#runBatch').addEventListener('click', async () => {
     text: row[textIndex],
     questions: state.questions
   })));
-  } catch (error) { $('#settingsDialog').showModal(); $('#runBatch').innerHTML = 'Run analysis <span>→</span>'; return; }
+  } catch (error) { $('#settingsDialog').showModal(); $('#installStatus').textContent = error.message; $('#runBatch').innerHTML = 'Run analysis <span>→</span>'; return; }
   $('#runBatch').innerHTML = 'Run analysis <span>→</span>';
   renderResults(); goTo('results');
 });
@@ -149,7 +189,6 @@ $('#downloadResults').addEventListener('click', () => {
 });
 
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
-$('#startDownload').addEventListener('click', () => $('#settingsDialog').showModal());
 $('#startAdvanced').addEventListener('click', () => $('#advancedDialog').showModal());
 $('#aboutButton').addEventListener('click', () => $('#aboutDialog').showModal());
 $('#openAdvanced').addEventListener('click', () => { $('#settingsDialog').close(); $('#advancedDialog').showModal(); });
@@ -183,9 +222,40 @@ $('#saveAdvanced').addEventListener('click', () => {
   const workspace = Object.fromEntries(['inputMode','decisionStrategy','outputDetail','languageRoute','confidenceThreshold','reviewAction','batchSize','comparisonMode'].map((id) => [id, $(`#${id}`).value]));
   localStorage.setItem('thinkfast-workspace', JSON.stringify(workspace));
 });
-$('#installEngine').addEventListener('click', async () => {
-  $('#installEngine').textContent = 'Downloading…';
-  try { await engine.install(); $('#installEngine').textContent = 'Local model ready'; $('#installStatus').textContent = 'Your recommended local model is installed and ready to analyze documents privately.'; }
-  catch (error) { $('#installEngine').textContent = 'Try download again'; $('#installStatus').textContent = 'The download could not start. Please check your internet connection.'; }
+let installInProgress = false;
+async function beginInstall() {
+  if (installInProgress) return;
+  installInProgress = true;
+  const button = $('#installEngine');
+  button.disabled = true;
+  button.textContent = 'Starting download…';
+  $('#installStatus').textContent = 'Connecting to the private local engine…';
+  try {
+    const health = await waitForEngine();
+    if (health.ready) {
+      button.textContent = 'Local model ready';
+      $('#installStatus').textContent = 'Your recommended local model is installed and ready to analyze documents privately.';
+    } else {
+      button.textContent = 'Downloading model…';
+      $('#installStatus').textContent = 'Downloading the model now. This can take several minutes; keep ThinkFast Studio open.';
+      await engine.install();
+      button.textContent = 'Local model ready';
+      $('#installStatus').textContent = 'Download complete. Your local model is ready to analyze documents privately.';
+    }
+    setEngineIndicator('Decision engine ready', true);
+  } catch (error) {
+    button.innerHTML = 'Try download again <span>↓</span>';
+    $('#installStatus').textContent = `${error.message} Keep ThinkFast Studio open, then try again.`;
+    setEngineIndicator('Decision engine is unavailable');
+  } finally {
+    button.disabled = false;
+    installInProgress = false;
+  }
+}
+
+$('#startDownload').addEventListener('click', () => {
+  $('#settingsDialog').showModal();
+  beginInstall();
 });
-renderQuestionChips(); renderResults();
+$('#installEngine').addEventListener('click', beginInstall);
+renderQuestionChips(); renderResults(); refreshEngineStatus();
