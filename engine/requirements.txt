@@ -1,3 +1,5 @@
 laya[serve]
 pyinstaller
 pillow
+python-docx
+olefile
