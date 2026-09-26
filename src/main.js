@@ -27,6 +27,18 @@ const engine = {
     if (!response.ok) throw new Error('The local model installer did not respond.');
     return response.json();
   },
+  extractDocument: async (file) => {
+    const content = await file.arrayBuffer();
+    const bytes = new Uint8Array(content);
+    let binary = '';
+    for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+    const response = await fetch(`${engineUrl}/extract-document`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filename: file.name, content: btoa(binary) }) });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.detail || 'This Word document could not be read.');
+    }
+    return response.json();
+  },
   analyze: async (records) => {
     const response = await fetch(`${engineUrl}/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ records }) });
     if (!response.ok) {
@@ -44,21 +56,6 @@ function setEngineIndicator(text, ready = false) {
 }
 
 const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-function updateSetupProgress(status) {
-  const percent = Number.isFinite(Number(status.percent)) ? Number(status.percent) : 0;
-  $('#setupPercent').textContent = `${percent}%`;
-  $('#setupProgressBar').style.width = `${percent}%`;
-  $('#setupProgressLabel').textContent = status.state === 'ready' ? 'Local model ready' : status.state === 'failed' ? 'Download needs attention' : 'One-time model download';
-  $('#setupStatus').textContent = status.error ? `${status.message} ${status.error}` : status.message;
-}
-
-function modelReady(status) {
-  updateSetupProgress({ ...status, state: 'ready', percent: 100 });
-  $('#splashInstall').classList.add('hidden');
-  $('#splashContinue').classList.remove('hidden');
-  setEngineIndicator('Decision engine ready', true);
-}
 
 async function watchModelInstallation(onUpdate) {
   for (let attempt = 0; attempt < 3600; attempt += 1) {
@@ -80,35 +77,6 @@ async function installRecommendedModel(onUpdate) {
   }
   await engine.install();
   return watchModelInstallation(onUpdate);
-}
-
-function enterStudio() {
-  $('#setupSplash').classList.add('is-hidden');
-  $('#appShell').classList.remove('setup-locked');
-  goTo('decisions');
-}
-
-async function initialiseSetup() {
-  try {
-    const health = await waitForEngine();
-    if (health.ready) {
-      modelReady(health.install || { message: 'Your local model is ready.' });
-      return;
-    }
-    const status = health.install || { state: 'waiting', percent: 0, message: 'Ready to download the recommended local model.' };
-    updateSetupProgress(status);
-    if (status.state === 'downloading' || status.state === 'preparing') {
-      $('#splashInstall').disabled = true;
-      const completed = await watchModelInstallation(updateSetupProgress);
-      modelReady(completed);
-    } else {
-      $('#setupStatus').textContent = 'Download the model once to unlock ThinkFast Studio.';
-    }
-    setEngineIndicator('Decision engine ready to download');
-  } catch (error) {
-    updateSetupProgress({ state: 'failed', percent: 0, message: 'The local helper did not start. Quit ThinkFast Studio and open it again.', error: error.message });
-    setEngineIndicator('Decision engine is unavailable');
-  }
 }
 
 async function waitForEngine() {
@@ -229,10 +197,7 @@ function renderDatasetList() {
 
 function addDataset(file) {
   const extension = file.name.split('.').pop().toLowerCase();
-  if (extension === 'doc' || extension === 'docx') {
-    window.alert('Word document reading will be included in a future ThinkFast Studio update. This version can analyze CSV and plain-text files today. Save the document as .txt or .csv to include it now.');
-    return;
-  }
+  if (extension === 'doc' || extension === 'docx') { addWordDataset(file); return; }
   const reader = new FileReader();
   reader.onload = () => {
     const data = extension === 'csv'
@@ -247,6 +212,20 @@ function addDataset(file) {
     renderDatasetList();
   };
   reader.readAsText(file);
+}
+
+async function addWordDataset(file) {
+  try {
+    const extracted = await engine.extractDocument(file);
+    const upload = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, fileName: file.name, headers: ['Document', 'Body text'], rows: [[file.name, extracted.text]], textIndex: 1 };
+    state.uploads.push(upload);
+    state.activeUploadId = upload.id;
+    $('#uploadConfirmation').textContent = `${file.name} was added. Its document text will be included in this analysis.`;
+    $('#dropZone').classList.add('hidden'); $('#batchPreview').classList.remove('hidden');
+    renderDatasetList();
+  } catch (error) {
+    window.alert(error.message);
+  }
 }
 
 const dropZone = $('#dropZone');
@@ -343,7 +322,6 @@ async function beginInstall() {
     await installRecommendedModel((status) => {
       button.textContent = status.state === 'ready' ? 'Local model ready' : `Downloading model… ${status.percent || 0}%`;
       $('#installStatus').textContent = status.message;
-      updateSetupProgress(status);
     });
     button.textContent = 'Local model ready';
     $('#installStatus').textContent = 'Your recommended local model is installed and ready to analyze documents privately.';
@@ -358,27 +336,5 @@ async function beginInstall() {
   }
 }
 
-$('#splashInstall').addEventListener('click', async () => {
-  if (installInProgress) return;
-  installInProgress = true;
-  const button = $('#splashInstall');
-  button.disabled = true;
-  button.textContent = 'Starting download…';
-  try {
-    const completed = await installRecommendedModel((status) => {
-      updateSetupProgress(status);
-      button.textContent = status.state === 'downloading' ? `Downloading… ${status.percent || 0}%` : 'Preparing download…';
-    });
-    modelReady(completed);
-  } catch (error) {
-    updateSetupProgress({ state: 'failed', percent: 0, message: 'The download could not be completed. Try again.', error: error.message });
-    button.disabled = false;
-    button.innerHTML = 'Try the download again <span>↓</span>';
-  } finally {
-    installInProgress = false;
-  }
-});
-$('#splashContinue').addEventListener('click', enterStudio);
-
 $('#installEngine').addEventListener('click', beginInstall);
-renderQuestionChips(); renderResults(); initialiseSetup();
+renderQuestionChips(); renderResults(); refreshEngineStatus();
