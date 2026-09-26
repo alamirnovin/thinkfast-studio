@@ -1,6 +1,9 @@
 """Private local decision engine used by ThinkFast Studio's desktop installer."""
 from __future__ import annotations
 
+import base64
+import io
+import re
 from pathlib import Path
 from threading import Event, Lock, Thread
 from fastapi import FastAPI, HTTPException
@@ -31,6 +34,50 @@ class InstallRequest(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     records: list[dict]
+
+
+class ExtractDocumentRequest(BaseModel):
+    filename: str
+    content: str
+
+
+def legacy_word_text(content: bytes) -> str:
+    """Recover readable text from legacy .doc files without requiring Word on the user's computer."""
+    try:
+        import olefile
+
+        document = olefile.OleFileIO(io.BytesIO(content)).openstream("WordDocument").read()
+    except Exception as exc:
+        raise ValueError("This .doc file is not a readable Microsoft Word document.") from exc
+    candidates = [document.decode("utf-16-le", errors="ignore"), document.decode("cp1252", errors="ignore")]
+    text = max(candidates, key=lambda value: sum(character.isprintable() for character in value))
+    text = re.sub(r"[\x00-\x08\x0b-\x1f]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) < 20:
+        raise ValueError("ThinkFast Studio could not recover readable text from this legacy .doc file. Save it as .docx and upload it again.")
+    return text
+
+
+def document_text(filename: str, content: bytes) -> str:
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".docx":
+        try:
+            from docx import Document
+
+            document = Document(io.BytesIO(content))
+            sections = [paragraph.text.strip() for paragraph in document.paragraphs if paragraph.text.strip()]
+            for table in document.tables:
+                sections.extend(" | ".join(cell.text.strip() for cell in row.cells if cell.text.strip()) for row in table.rows)
+            text = "\n".join(section for section in sections if section)
+        except Exception as exc:
+            raise ValueError("This .docx file could not be read.") from exc
+    elif suffix == ".doc":
+        text = legacy_word_text(content)
+    else:
+        raise ValueError("Only .doc and .docx Word documents can be extracted here.")
+    if not text.strip():
+        raise ValueError("This Word document does not contain readable body text.")
+    return text
 
 
 def set_install_status(state: str, percent: int, message: str, error: str | None = None):
@@ -147,6 +194,15 @@ def install(request: InstallRequest):
             install_thread = Thread(target=install_recommended_model, args=(request.multilingual,), daemon=True)
             install_thread.start()
     return {"ready": False, "state": "downloading"}
+
+
+@app.post("/extract-document")
+def extract_document(request: ExtractDocumentRequest):
+    try:
+        content = base64.b64decode(request.content, validate=True)
+        return {"text": document_text(request.filename, content)}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
