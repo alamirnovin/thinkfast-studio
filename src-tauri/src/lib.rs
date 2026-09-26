@@ -39,6 +39,5 @@ pub fn run() {
       if matches!(event, RunEvent::ExitRequested { .. } | RunEvent::Exit) {
         stop_engine(app);
       }
-    })
-    .expect("error while running ThinkFast Studio");
+    });
 }
