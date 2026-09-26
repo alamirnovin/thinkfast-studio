@@ -20,6 +20,11 @@ const engine = {
     }
     return response.json();
   },
+  installStatus: async () => {
+    const response = await fetch(`${engineUrl}/install/status`);
+    if (!response.ok) throw new Error('The local model installer did not respond.');
+    return response.json();
+  },
   analyze: async (records) => {
     const response = await fetch(`${engineUrl}/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ records }) });
     if (!response.ok) {
@@ -34,6 +39,73 @@ function setEngineIndicator(text, ready = false) {
   const indicator = $('#engineIndicator');
   indicator.innerHTML = `<i></i> ${escapeHtml(text)}`;
   indicator.classList.toggle('engine-ready', ready);
+}
+
+const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+function updateSetupProgress(status) {
+  const percent = Number.isFinite(Number(status.percent)) ? Number(status.percent) : 0;
+  $('#setupPercent').textContent = `${percent}%`;
+  $('#setupProgressBar').style.width = `${percent}%`;
+  $('#setupProgressLabel').textContent = status.state === 'ready' ? 'Local model ready' : status.state === 'failed' ? 'Download needs attention' : 'One-time model download';
+  $('#setupStatus').textContent = status.error ? `${status.message} ${status.error}` : status.message;
+}
+
+function modelReady(status) {
+  updateSetupProgress({ ...status, state: 'ready', percent: 100 });
+  $('#splashInstall').classList.add('hidden');
+  $('#splashContinue').classList.remove('hidden');
+  setEngineIndicator('Decision engine ready', true);
+}
+
+async function watchModelInstallation(onUpdate) {
+  for (let attempt = 0; attempt < 3600; attempt += 1) {
+    const status = await engine.installStatus();
+    onUpdate(status);
+    if (status.state === 'ready') return status;
+    if (status.state === 'failed') throw new Error(status.error || status.message);
+    await pause(750);
+  }
+  throw new Error('The download took longer than expected. Keep the app open and try again.');
+}
+
+async function installRecommendedModel(onUpdate) {
+  const health = await waitForEngine();
+  if (health.ready) {
+    const status = { state: 'ready', percent: 100, message: 'Your local model is ready.' };
+    onUpdate(status);
+    return status;
+  }
+  await engine.install();
+  return watchModelInstallation(onUpdate);
+}
+
+function enterStudio() {
+  $('#setupSplash').classList.add('is-hidden');
+  goTo('decisions');
+}
+
+async function initialiseSetup() {
+  try {
+    const health = await waitForEngine();
+    if (health.ready) {
+      modelReady(health.install || { message: 'Your local model is ready.' });
+      return;
+    }
+    const status = health.install || { state: 'waiting', percent: 0, message: 'Ready to download the recommended local model.' };
+    updateSetupProgress(status);
+    if (status.state === 'downloading' || status.state === 'preparing') {
+      $('#splashInstall').disabled = true;
+      const completed = await watchModelInstallation(updateSetupProgress);
+      modelReady(completed);
+    } else {
+      $('#setupStatus').textContent = 'Download the model once to unlock ThinkFast Studio.';
+    }
+    setEngineIndicator('Decision engine ready to download');
+  } catch (error) {
+    updateSetupProgress({ state: 'failed', percent: 0, message: 'The local helper did not start. Quit ThinkFast Studio and open it again.', error: error.message });
+    setEngineIndicator('Decision engine is unavailable');
+  }
 }
 
 async function waitForEngine() {
@@ -231,17 +303,13 @@ async function beginInstall() {
   button.textContent = 'Starting download…';
   $('#installStatus').textContent = 'Connecting to the private local engine…';
   try {
-    const health = await waitForEngine();
-    if (health.ready) {
-      button.textContent = 'Local model ready';
-      $('#installStatus').textContent = 'Your recommended local model is installed and ready to analyze documents privately.';
-    } else {
-      button.textContent = 'Downloading model…';
-      $('#installStatus').textContent = 'Downloading the model now. This can take several minutes; keep ThinkFast Studio open.';
-      await engine.install();
-      button.textContent = 'Local model ready';
-      $('#installStatus').textContent = 'Download complete. Your local model is ready to analyze documents privately.';
-    }
+    await installRecommendedModel((status) => {
+      button.textContent = status.state === 'ready' ? 'Local model ready' : `Downloading model… ${status.percent || 0}%`;
+      $('#installStatus').textContent = status.message;
+      updateSetupProgress(status);
+    });
+    button.textContent = 'Local model ready';
+    $('#installStatus').textContent = 'Your recommended local model is installed and ready to analyze documents privately.';
     setEngineIndicator('Decision engine ready', true);
   } catch (error) {
     button.innerHTML = 'Try download again <span>↓</span>';
@@ -253,9 +321,31 @@ async function beginInstall() {
   }
 }
 
+$('#splashInstall').addEventListener('click', async () => {
+  if (installInProgress) return;
+  installInProgress = true;
+  const button = $('#splashInstall');
+  button.disabled = true;
+  button.textContent = 'Starting download…';
+  try {
+    const completed = await installRecommendedModel((status) => {
+      updateSetupProgress(status);
+      button.textContent = status.state === 'downloading' ? `Downloading… ${status.percent || 0}%` : 'Preparing download…';
+    });
+    modelReady(completed);
+  } catch (error) {
+    updateSetupProgress({ state: 'failed', percent: 0, message: 'The download could not be completed. Try again.', error: error.message });
+    button.disabled = false;
+    button.innerHTML = 'Try the download again <span>↓</span>';
+  } finally {
+    installInProgress = false;
+  }
+});
+$('#splashContinue').addEventListener('click', enterStudio);
+
 $('#startDownload').addEventListener('click', () => {
   $('#settingsDialog').showModal();
   beginInstall();
 });
 $('#installEngine').addEventListener('click', beginInstall);
-renderQuestionChips(); renderResults(); refreshEngineStatus();
+renderQuestionChips(); renderResults(); initialiseSetup();
