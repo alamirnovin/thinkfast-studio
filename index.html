@@ -27,7 +27,7 @@
         <p class="setup-footnote">About 1 GB or more, depending on the model version. You only download it once.</p>
       </div>
     </section>
-    <div class="app-shell">
+    <div class="app-shell setup-locked" id="appShell">
       <aside class="sidebar">
         <a class="brand" href="#decisions" aria-label="ThinkFast Studio home">
           <span class="brand-mark">TFS</span>
@@ -51,9 +51,8 @@
       <main>
         <section class="page active" id="decisions">
           <div class="eyebrow">Decision choices</div>
-          <div class="page-heading split-heading">
+          <div class="page-heading">
             <div><h1>Ask a clear question.<br />See a useful answer.</h1><p>Start with a piece of text. Then choose the kinds of decisions you want a fast decision model to make.</p></div>
-            <div class="start-actions"><button class="primary-button download-model-button" id="startDownload">Download model to start <span>↓</span></button><button class="advanced-start-link" id="startAdvanced" type="button">Advanced: add/manage other System‑1 models →</button><button class="text-button" data-go="builder">Build questions first →</button></div>
           </div>
           <div class="decision-grid" id="decisionCards">
             <button class="decision-card selected" data-type="choice"><span class="card-number">A</span><strong>Choose between options</strong><small>“Which topic fits this text best?”</small><b>Multiple choice</b></button>
@@ -98,9 +97,9 @@
         <section class="page" id="batch">
           <div class="eyebrow">Documents to analyze</div>
           <div class="page-heading"><div><h1>Review many records,<br />without losing the human view.</h1><p>Bring in a spreadsheet. Choose the column containing the text. Your selected decision model applies your questions to each row.</p></div></div>
-          <div class="drop-zone" id="dropZone"><div class="upload-icon">↑</div><h2>Drop a document or spreadsheet here</h2><p>or <button class="text-button" id="chooseFile">choose a file from your computer</button></p><small>CSV, text, and Word documents are welcome. Your original stays unchanged.</small><input id="fileInput" type="file" accept=".csv,.txt,.doc,.docx,text/csv,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden /></div>
+          <div class="drop-zone" id="dropZone"><div class="upload-icon">↑</div><h2>Drop one or more documents here</h2><p>or <button class="text-button" id="chooseFile">choose files from your computer</button></p><small>CSV, text, and Word documents are welcome. Your originals stay unchanged.</small><input id="fileInput" type="file" accept=".csv,.txt,.doc,.docx,text/csv,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden /></div>
           <p class="document-note"><span>✦</span> Long documents are read in short passages, then brought back together into one review. Nothing is sent as one unreadable wall of text.</p>
-          <div class="batch-preview hidden" id="batchPreview"><div class="preview-top"><div><span class="eyebrow">Ready to review</span><h2 id="fileName">records.csv</h2><p id="rowCount">0 rows found</p></div><button class="primary-button" id="runBatch">Run analysis <span>→</span></button></div><div class="column-choice"><span>Which column contains the text you want to review?</span><select id="textColumn"></select></div><div class="table-wrap"><table id="previewTable"></table></div></div>
+          <div class="batch-preview hidden" id="batchPreview"><div class="preview-top"><div><span class="eyebrow">Documents ready to review</span><h2 id="fileName">Your selected datasets</h2><p id="rowCount">0 records found</p></div><button class="primary-button" id="runBatch">Run analysis <span>→</span></button></div><p class="upload-confirmation" id="uploadConfirmation" role="status"></p><div class="dataset-actions"><button class="secondary-button" id="addDataset" type="button">+ Add or combine another dataset</button><button class="text-button clear-datasets" id="clearDatasets" type="button">Clear all datasets</button></div><div class="dataset-list" id="datasetList"></div><div class="table-wrap"><table id="previewTable"></table></div></div>
         </section>
 
         <section class="page" id="results">
