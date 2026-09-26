@@ -1,6 +1,8 @@
 const state = {
   questions: [{ text: 'Which team should take care of this?', type: 'choice', options: ['Billing', 'Technical support', 'Something else'] }],
-  records: []
+  records: [],
+  uploads: [],
+  activeUploadId: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -82,6 +84,7 @@ async function installRecommendedModel(onUpdate) {
 
 function enterStudio() {
   $('#setupSplash').classList.add('is-hidden');
+  $('#appShell').classList.remove('setup-locked');
   goTo('decisions');
 }
 
@@ -201,10 +204,33 @@ function parseCSV(text) {
   return { headers, rows };
 }
 
-function showPreview(file) {
+function renderUploadPreview(upload) {
+  if (!upload) return;
+  $('#previewTable').innerHTML = `<thead><tr>${upload.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${upload.rows.slice(0, 5).map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+
+function renderDatasetList() {
+  const uploads = state.uploads;
+  const recordCount = uploads.reduce((total, upload) => total + upload.rows.length, 0);
+  $('#fileName').textContent = `${uploads.length} dataset${uploads.length === 1 ? '' : 's'} selected`;
+  $('#rowCount').textContent = `${recordCount} record${recordCount === 1 ? '' : 's'} found`;
+  $('#datasetList').innerHTML = uploads.map((upload) => `<article class="dataset-row ${upload.id === state.activeUploadId ? 'active-dataset' : ''}"><div><b>${escapeHtml(upload.fileName)}</b><small>${upload.rows.length} record${upload.rows.length === 1 ? '' : 's'} · ${upload.headers.length} column${upload.headers.length === 1 ? '' : 's'}</small></div><label>Text column<select data-text-column="${upload.id}">${upload.headers.map((header, index) => `<option value="${index}" ${index === upload.textIndex ? 'selected' : ''}>${escapeHtml(header)}</option>`).join('')}</select></label><button class="text-button preview-dataset" type="button" data-preview-upload="${upload.id}">Preview</button></article>`).join('');
+  $$('#datasetList [data-text-column]').forEach((select) => select.addEventListener('change', () => {
+    const upload = state.uploads.find((item) => item.id === select.dataset.textColumn);
+    upload.textIndex = Number(select.value);
+  }));
+  $$('#datasetList [data-preview-upload]').forEach((button) => button.addEventListener('click', () => {
+    state.activeUploadId = button.dataset.previewUpload;
+    renderDatasetList();
+    renderUploadPreview(state.uploads.find((item) => item.id === state.activeUploadId));
+  }));
+  renderUploadPreview(uploads.find((item) => item.id === state.activeUploadId) || uploads[0]);
+}
+
+function addDataset(file) {
   const extension = file.name.split('.').pop().toLowerCase();
   if (extension === 'doc' || extension === 'docx') {
-    window.alert('Word document reading will be included in the installed desktop app. This browser preview can open CSV and plain-text files today. For now, save this file as .txt or .csv to try the workflow.');
+    window.alert('Word document reading will be included in a future ThinkFast Studio update. This version can analyze CSV and plain-text files today. Save the document as .txt or .csv to include it now.');
     return;
   }
   const reader = new FileReader();
@@ -213,13 +239,12 @@ function showPreview(file) {
       ? parseCSV(reader.result)
       : { headers: ['Document', 'Body text'], rows: [[file.name, reader.result]] };
     if (!data.headers.length) return;
-    state.upload = { fileName: file.name, ...data };
-    $('#fileName').textContent = file.name;
-    $('#rowCount').textContent = `${data.rows.length} rows found`;
-    const select = $('#textColumn');
-    select.innerHTML = data.headers.map((h, i) => `<option value="${i}">${escapeHtml(h)}</option>`).join('');
-    $('#previewTable').innerHTML = `<thead><tr>${data.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${data.rows.slice(0, 5).map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    const upload = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, fileName: file.name, ...data, textIndex: Math.max(0, data.headers.findIndex((header) => /text|body|message|content|description/i.test(header))) };
+    state.uploads.push(upload);
+    state.activeUploadId = upload.id;
+    $('#uploadConfirmation').textContent = `${file.name} was added. ${data.rows.length} record${data.rows.length === 1 ? '' : 's'} will be included in this analysis.`;
     $('#dropZone').classList.add('hidden'); $('#batchPreview').classList.remove('hidden');
+    renderDatasetList();
   };
   reader.readAsText(file);
 }
@@ -227,21 +252,34 @@ function showPreview(file) {
 const dropZone = $('#dropZone');
 ['dragenter','dragover'].forEach((event) => dropZone.addEventListener(event, (e) => { e.preventDefault(); dropZone.classList.add('drag'); }));
 ['dragleave','drop'].forEach((event) => dropZone.addEventListener(event, (e) => { e.preventDefault(); dropZone.classList.remove('drag'); }));
-dropZone.addEventListener('drop', (event) => { const [file] = event.dataTransfer.files; if (file) showPreview(file); });
+dropZone.addEventListener('drop', (event) => [...event.dataTransfer.files].forEach(addDataset));
 $('#chooseFile').addEventListener('click', () => $('#fileInput').click());
-$('#fileInput').addEventListener('change', (event) => { if (event.target.files[0]) showPreview(event.target.files[0]); });
+$('#addDataset').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', (event) => {
+  [...event.target.files].forEach(addDataset);
+  event.target.value = '';
+});
+$('#clearDatasets').addEventListener('click', () => {
+  state.uploads = [];
+  state.activeUploadId = null;
+  $('#uploadConfirmation').textContent = 'All datasets were cleared. Choose new files to start again.';
+  $('#batchPreview').classList.add('hidden');
+  $('#dropZone').classList.remove('hidden');
+  $('#previewTable').innerHTML = '';
+});
 
 $('#runBatch').addEventListener('click', async () => {
-  if (!state.upload) { goTo('batch'); return; }
-  const { headers, rows } = state.upload;
-  const textIndex = Number($('#textColumn').value);
-  const titleIndex = Math.max(0, headers.findIndex((h) => /title|name|id/i.test(h)));
+  if (!state.uploads.length) { goTo('batch'); return; }
   $('#runBatch').textContent = 'Reading your documents…';
-  try { state.records = await engine.analyze(rows.map((row, i) => ({
-    title: row[titleIndex] || `Document ${i + 1}`,
-    text: row[textIndex],
-    questions: state.questions
-  })));
+  const records = state.uploads.flatMap((upload) => {
+    const titleIndex = Math.max(0, upload.headers.findIndex((header) => /title|name|id/i.test(header)));
+    return upload.rows.map((row, index) => ({
+      title: row[titleIndex] || `${upload.fileName} — document ${index + 1}`,
+      text: row[upload.textIndex],
+      questions: state.questions
+    }));
+  }).filter((record) => record.text && record.text.trim());
+  try { state.records = await engine.analyze(records);
   } catch (error) { $('#settingsDialog').showModal(); $('#installStatus').textContent = error.message; $('#runBatch').innerHTML = 'Run analysis <span>→</span>'; return; }
   $('#runBatch').innerHTML = 'Run analysis <span>→</span>';
   renderResults(); goTo('results');
@@ -261,7 +299,6 @@ $('#downloadResults').addEventListener('click', () => {
 });
 
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
-$('#startAdvanced').addEventListener('click', () => $('#advancedDialog').showModal());
 $('#aboutButton').addEventListener('click', () => $('#aboutDialog').showModal());
 $('#openAdvanced').addEventListener('click', () => { $('#settingsDialog').close(); $('#advancedDialog').showModal(); });
 
@@ -343,9 +380,5 @@ $('#splashInstall').addEventListener('click', async () => {
 });
 $('#splashContinue').addEventListener('click', enterStudio);
 
-$('#startDownload').addEventListener('click', () => {
-  $('#settingsDialog').showModal();
-  beginInstall();
-});
 $('#installEngine').addEventListener('click', beginInstall);
 renderQuestionChips(); renderResults(); initialiseSetup();
