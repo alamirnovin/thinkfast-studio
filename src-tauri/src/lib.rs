@@ -13,7 +13,7 @@ fn open_studio(app: tauri::AppHandle) -> Result<(), String> {
   main.show().map_err(|error| error.to_string())?;
   main.set_focus().map_err(|error| error.to_string())?;
   if let Some(setup) = app.get_webview_window("setup") {
-    setup.hide().map_err(|error| error.to_string())?;
+    setup.destroy().map_err(|error| error.to_string())?;
   }
   Ok(())
 }
