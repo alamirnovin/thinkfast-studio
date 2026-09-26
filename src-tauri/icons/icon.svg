@@ -1,6 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" rx="220" fill="#183f3d"/>
-  <circle cx="512" cy="512" r="342" fill="none" stroke="#9bc8b9" stroke-width="18"/>
-  <text x="512" y="575" text-anchor="middle" font-family="Arial, sans-serif" font-size="190" font-weight="700" letter-spacing="-16" fill="#f7f4ee">TFS</text>
-  <circle cx="772" cy="320" r="30" fill="#e8ba68"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="ThinkFast Studio">
+  <rect width="1024" height="1024" rx="224" fill="#123b35"/>
+  <path d="M509 198C433 143 326 172 285 250c-73 4-123 70-102 140-58 52-57 146 2 196-18 81 48 151 129 137 45 77 139 91 195 27 56 64 150 50 195-27 81 14 147-56 129-137 59-50 60-144 2-196 21-70-29-136-102-140-41-78-148-107-224-52Z" fill="#e6ebe8"/>
+  <path d="M509 236c-24 57 18 91 0 145s19 96 0 143c-19 48 21 88 0 151M361 330c34 20 52 49 54 88m-126 56c42 13 68 42 76 84m-52 92c41-3 69 11 91 45m307-365c-34 20-52 49-54 88m126 56c-42 13-68 42-76 84m52 92c-41-3-69 11-91 45" fill="none" stroke="#123b35" stroke-width="28" stroke-linecap="round"/>
+  <path d="M247 321 348 383 445 480 583 568" fill="none" stroke="#9bc8bf" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="247" cy="321" r="30" fill="#f0a6ba"/>
+  <circle cx="348" cy="383" r="21" fill="#9bc8bf"/>
+  <circle cx="445" cy="480" r="18" fill="#9bc8bf"/>
+  <path d="M565 540c36-30 86-14 95 20 8 34-27 71-65 72-38-1-72-38-65-72 5-10 15-16 35-20Z" fill="#e8a0b5"/>
+  <circle cx="596" cy="584" r="13" fill="#f7dde4"/>
 </svg>
