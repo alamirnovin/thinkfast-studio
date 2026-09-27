@@ -157,36 +157,51 @@ def analyze(request: AnalyzeRequest):
         questions = record.get("questions") or []
         if not questions:
             raise HTTPException(status_code=422, detail="Choose at least one question before starting an analysis.")
-        output = router.predict(record["text"], questions_for_local_model(questions))
+        try:
+            output = router.predict(record["text"], questions_for_local_model(questions))
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Analysis could not run: {exc}") from exc
+
         answers = []
         for index, question in enumerate(questions):
+            kind = str(question.get("type", "choice"))
             raw_answer = output["answers"].get(f"question_{index + 1}", {})
-            answer = raw_answer.get("choice", raw_answer.get("noul", raw_answer.get("score", "Needs review")))
-            confidence = round(float(raw_answer.get("confidence", raw_answer.get("probability", 0.5))) * 100)
+            confidence_value = raw_answer.get("answer_confidence", raw_answer.get("confidence", 0.5))
+            confidence = round(max(0.0, min(1.0, float(confidence_value))) * 100)
+
+            if kind == "yesno":
+                probability_yes = float(raw_answer.get("noul", 0.5))
+                answer = "Yes" if probability_yes >= 0.5 else "No"
+            elif kind == "score":
+                levels = [str(level) for level in question.get("options") or []]
+                raw_score = float(raw_answer.get("score", 0.0))
+                level_index = max(0, min(len(levels) - 1, round(raw_score))) if levels else 0
+                answer = levels[level_index] if levels else str(raw_score)
+            else:
+                answer = str(raw_answer.get("choice", "Needs review"))
+
             answer_entry = {
-            "question_id": str(question.get("id", f"question_{index + 1}")),
-            "question": str(question.get("text", f"Question {index + 1}")),
-            "type": kind,
-            "answer": str(answer),
-            "confidence": confidence,
-        }
-        if kind == "score":
-            levels = [str(level) for level in question.get("options") or []]
-            answer_entry["scale_levels"] = levels
-            score_position = None
-            try:
-                score_position = float(raw_answer.get("score"))
-            except (TypeError, ValueError):
-                normalized_answer = str(answer).strip().casefold()
-                for position, level in enumerate(levels, start=1):
-                    if normalized_answer == level.strip().casefold():
-                        score_position = float(position)
-                        break
-            answer_entry["score_position"] = score_position
-        answers.append(answer_entry)
+                "question_id": str(question.get("id", f"question_{index + 1}")),
+                "question": str(question.get("text", f"Question {index + 1}")),
+                "type": kind,
+                "answer": answer,
+                "confidence": confidence,
+            }
+            if kind == "score":
+                answer_entry["scale_levels"] = levels
+                answer_entry["score_position"] = level_index + 1
+            answers.append(answer_entry)
+
         first = answers[0]
         overall_confidence = min(answer["confidence"] for answer in answers)
-        results.append({"title": record["title"], "text": record["text"], "answer": first["answer"], "confidence": overall_confidence, "answers": answers, "status": "ready" if overall_confidence >= 75 else "review"})
+        results.append({
+            "title": record["title"],
+            "text": record["text"],
+            "answer": first["answer"],
+            "confidence": overall_confidence,
+            "answers": answers,
+            "status": "ready" if overall_confidence >= 75 else "review",
+        })
     return results
 
 if __name__ == "__main__":
