@@ -21,10 +21,10 @@ The release app will be a standard macOS `.dmg` and Windows `.msi`/installer:
 
 1. Download and open the installer.
 2. Open ThinkFast Studio.
-3. Select **Download decision engine** once.
-4. Analyze documents offline afterward.
+3. Wait briefly while its included decision engine starts.
+4. Analyze documents offline.
 
-Bundling the full model inside every installer is possible but would make the initial download very large. The recommended experience is to ship the small app installer and let the app download the selected model with a single friendly button on first use.
+The standard installer includes the recommended English decision engine, so there is no first-run model download. This makes the installer larger, but keeps the beginner experience self-contained and offline after installation.
 
 Long documents are split into manageable passages before the selected local model evaluates them. The app combines those passage-level decisions into one document-level result and identifies passages that need a human look.
 
