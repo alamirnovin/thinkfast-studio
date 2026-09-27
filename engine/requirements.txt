@@ -3,3 +3,4 @@ pyinstaller
 pillow
 python-docx
 olefile
+pypdf
