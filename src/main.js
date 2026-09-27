@@ -89,16 +89,16 @@ async function refreshEngineStatus() {
 }
 
 function goTo(page) {
-  $$('.page').forEach((section) => section.classList.toggle('active', section.id === page));
-  $$('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.page === page));
+  $$$('.page').forEach((section) => section.classList.toggle('active', section.id === page));
+  $$$('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.page === page));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-$$('.nav-item').forEach((item) => item.addEventListener('click', () => goTo(item.dataset.page)));
-$$('[data-go]').forEach((item) => item.addEventListener('click', () => goTo(item.dataset.go)));
+$$$('.nav-item').forEach((item) => item.addEventListener('click', () => goTo(item.dataset.page)));
+$$$('[data-go]').forEach((item) => item.addEventListener('click', () => goTo(item.dataset.go)));
 
-$$('.decision-card').forEach((card) => card.addEventListener('click', () => {
-  $$('.decision-card').forEach((c) => c.classList.remove('selected'));
+$$$('.decision-card').forEach((card) => card.addEventListener('click', () => {
+  $$$('.decision-card').forEach((c) => c.classList.remove('selected'));
   card.classList.add('selected');
   const kind = card.dataset.type;
   beginNewQuestion(kind);
@@ -121,7 +121,7 @@ function addScoreLevel(value = '') {
 }
 
 function bindScoreControls() {
-  $('[data-score-preset]').forEach((button) => button.addEventListener('click', () => {
+  $$('[data-score-preset]').forEach((button) => button.addEventListener('click', () => {
     const presets = {
       '1-5': ['1 — Very low', '2 — Low', '3 — Middle', '4 — High', '5 — Very high'],
       '1-10': ['1 — Lowest', '2 — Very low', '3 — Low', '4 — Somewhat low', '5 — Middle', '6 — Somewhat high', '7 — High', '8 — Very high', '9 — Near the top', '10 — Highest'],
@@ -130,7 +130,7 @@ function bindScoreControls() {
     updateOptionArea('score', presets[button.dataset.scorePreset] || []);
   }));
   $('#addScoreLevel').addEventListener('click', () => addScoreLevel());
-  $('[data-remove-score-level]').forEach((button) => button.addEventListener('click', () => {
+  $$('[data-remove-score-level]').forEach((button) => button.addEventListener('click', () => {
     const levels = questionOptions('score');
     if (levels.length <= 2) return;
     levels.splice(Number(button.dataset.removeScoreLevel), 1);
@@ -164,8 +164,8 @@ function addOption() {
 }
 
 $('#addOption').addEventListener('click', addOption);
-$('.answer-type').forEach((button) => button.addEventListener('click', () => {
-  $('.answer-type').forEach((b) => b.classList.toggle('active', b === button));
+$$('.answer-type').forEach((button) => button.addEventListener('click', () => {
+  $$('.answer-type').forEach((b) => b.classList.toggle('active', b === button));
   updateOptionArea(button.dataset.answer);
 }));
 
@@ -178,8 +178,8 @@ function questionRow(question) {
 }
 
 function bindQuestionControls() {
-  $$('[data-edit-question]').forEach((button) => button.addEventListener('click', () => editQuestion(button.dataset.editQuestion)));
-  $$('[data-delete-question]').forEach((button) => button.addEventListener('click', () => deleteQuestion(button.dataset.deleteQuestion)));
+  $$$('[data-edit-question]').forEach((button) => button.addEventListener('click', () => editQuestion(button.dataset.editQuestion)));
+  $$$('[data-delete-question]').forEach((button) => button.addEventListener('click', () => deleteQuestion(button.dataset.deleteQuestion)));
 }
 
 function renderQuestionChips() {
@@ -194,7 +194,7 @@ function renderQuestionChips() {
 function beginNewQuestion(type = $('.answer-type.active').dataset.answer) {
   state.editingQuestionId = null;
   $('#questionText').value = '';
-  $$('.answer-type').forEach((button) => button.classList.toggle('active', button.dataset.answer === type));
+  $$$('.answer-type').forEach((button) => button.classList.toggle('active', button.dataset.answer === type));
   updateOptionArea(type);
   $('#saveQuestion').innerHTML = 'Save this question <span>→</span>';
 }
@@ -204,7 +204,7 @@ function editQuestion(id) {
   if (!question) return;
   state.editingQuestionId = id;
   $('#questionText').value = question.text;
-  $$('.answer-type').forEach((button) => button.classList.toggle('active', button.dataset.answer === question.type));
+  $$$('.answer-type').forEach((button) => button.classList.toggle('active', button.dataset.answer === question.type));
   updateOptionArea(question.type, question.options);
   $('#saveQuestion').innerHTML = 'Save changes <span>→</span>';
   goTo('builder');
@@ -256,7 +256,7 @@ function renderQuestionRunList() {
     return;
   }
   list.innerHTML = state.questions.map((question) => `<label class="question-run-option"><input type="checkbox" data-run-question="${question.id}" ${question.selectedForAnalysis ? 'checked' : ''} ${state.isAnalyzing ? 'disabled' : ''} /><span><b>${escapeHtml(question.text)}</b><small>${questionTypeLabel(question.type)}</small></span></label>`).join('');
-  $$('[data-run-question]').forEach((input) => input.addEventListener('change', () => {
+  $$$('[data-run-question]').forEach((input) => input.addEventListener('change', () => {
     const question = state.questions.find((item) => item.id === input.dataset.runQuestion);
     if (question) question.selectedForAnalysis = input.checked;
     renderQuestionChips();
@@ -276,16 +276,16 @@ function renderDatasetList() {
   $('#fileName').textContent = `${uploads.length} dataset${uploads.length === 1 ? '' : 's'} selected`;
   $('#rowCount').textContent = `${recordCount} record${recordCount === 1 ? '' : 's'} found`;
   $('#datasetList').innerHTML = uploads.map((upload) => `<article class="dataset-row ${upload.id === state.activeUploadId ? 'active-dataset' : ''}"><div><b>${escapeHtml(upload.fileName)}</b><small>${upload.rows.length} record${upload.rows.length === 1 ? '' : 's'} · ${upload.headers.length} column${upload.headers.length === 1 ? '' : 's'}</small></div><label>Text column<select data-text-column="${upload.id}" ${state.isAnalyzing ? 'disabled' : ''}>${upload.headers.map((header, index) => `<option value="${index}" ${index === upload.textIndex ? 'selected' : ''}>${escapeHtml(header)}</option>`).join('')}</select></label><div class="dataset-row-actions"><button class="text-button preview-dataset" type="button" data-preview-upload="${upload.id}">Preview</button><button class="text-button delete-dataset" type="button" data-delete-upload="${upload.id}" ${state.isAnalyzing ? 'disabled' : ''}>Delete</button></div></article>`).join('');
-  $$('#datasetList [data-text-column]').forEach((select) => select.addEventListener('change', () => {
+  $$$('#datasetList [data-text-column]').forEach((select) => select.addEventListener('change', () => {
     const upload = state.uploads.find((item) => item.id === select.dataset.textColumn);
     upload.textIndex = Number(select.value);
   }));
-  $$('#datasetList [data-preview-upload]').forEach((button) => button.addEventListener('click', () => {
+  $$$('#datasetList [data-preview-upload]').forEach((button) => button.addEventListener('click', () => {
     state.activeUploadId = button.dataset.previewUpload;
     renderDatasetList();
     renderUploadPreview(state.uploads.find((item) => item.id === state.activeUploadId));
   }));
-  $$('#datasetList [data-delete-upload]').forEach((button) => button.addEventListener('click', () => {
+  $$$('#datasetList [data-delete-upload]').forEach((button) => button.addEventListener('click', () => {
     const upload = state.uploads.find((item) => item.id === button.dataset.deleteUpload);
     if (!upload || !window.confirm(`Remove ${upload.fileName} from this analysis?`)) return;
     state.uploads = state.uploads.filter((item) => item.id !== upload.id);
@@ -514,13 +514,23 @@ function filteredRecords() {
 }
 
 function renderResults() {
-  updateResultsControls();
-  const shown = filteredRecords();
-  state.visibleRecords = shown;
+  const hasResults = state.records.length > 0;
   const ready = state.records.filter((record) => record.status === 'ready').length;
   $('#recordsReviewed').textContent = state.records.length;
   $('#readyCount').textContent = ready;
   $('#reviewCount').textContent = state.records.length - ready;
+  $('#downloadResults').disabled = !hasResults;
+  $('#resultsControls').classList.toggle('hidden', !hasResults);
+  $('#resultsEmptyState').classList.toggle('hidden', hasResults);
+  if (!hasResults) {
+    state.visibleRecords = [];
+    $('#resultsList').innerHTML = '';
+    return;
+  }
+
+  updateResultsControls();
+  const shown = filteredRecords();
+  state.visibleRecords = shown;
   const selectedName = state.resultsFilter.questionId === 'all' ? 'all questions' : $('#resultsQuestionFilter').selectedOptions[0]?.textContent || 'the selected question';
   $('#resultsFilterSummary').textContent = shown.length + ' of ' + state.records.length + ' records shown · ' + selectedName + '.';
   $('#resultsList').innerHTML = shown.map((record) => {
@@ -530,10 +540,10 @@ function renderResults() {
   }).join('') || '<p>There are no records that match these filters.</p>';
 }
 
-$('.filter').forEach((button) => button.addEventListener('click', () => {
+$$('.filter').forEach((button) => button.addEventListener('click', () => {
   state.resultsFilter.status = button.dataset.filter;
   if (button.dataset.filter === 'review') state.resultsFilter.reviewQueueOnly = true;
-  $('.filter').forEach((item) => item.classList.toggle('active', item === button));
+  $$('.filter').forEach((item) => item.classList.toggle('active', item === button));
   renderResults();
 }));
 $('#resultsQuestionFilter').addEventListener('change', (event) => {
@@ -557,13 +567,13 @@ $('#reviewQueueOnly').addEventListener('change', (event) => {
   state.resultsFilter.reviewQueueOnly = event.target.checked;
   if (event.target.checked) {
     state.resultsFilter.status = 'review';
-    $('.filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === 'review'));
+    $$('.filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === 'review'));
   }
   renderResults();
 });
 $('#resetResultsFilters').addEventListener('click', () => {
   state.resultsFilter = { status: 'all', questionId: 'all', answer: 'all', confidence: 'all', reviewQueueOnly: false, sort: 'confidence-desc' };
-  $('.filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === 'all'));
+  $$('.filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === 'all'));
   renderResults();
 });
 $('#downloadResults').addEventListener('click', () => {
@@ -581,19 +591,19 @@ $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showMo
 $('#aboutButton').addEventListener('click', () => $('#aboutDialog').showModal());
 $('#openAdvanced').addEventListener('click', () => { $('#settingsDialog').close(); $('#advancedDialog').showModal(); });
 
-$$('.advanced-tab').forEach((tab) => tab.addEventListener('click', () => {
-  $$('.advanced-tab').forEach((item) => item.classList.toggle('active', item === tab));
-  $$('.advanced-panel').forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === tab.dataset.advanced));
+$$$('.advanced-tab').forEach((tab) => tab.addEventListener('click', () => {
+  $$$('.advanced-tab').forEach((item) => item.classList.toggle('active', item === tab));
+  $$$('.advanced-panel').forEach((panel) => panel.classList.toggle('active', panel.dataset.panel === tab.dataset.advanced));
 }));
 
-$$('.provider-card').forEach((card) => card.addEventListener('click', () => {
-  $$('.provider-card').forEach((item) => item.classList.toggle('selected', item === card));
+$$$('.provider-card').forEach((card) => card.addEventListener('click', () => {
+  $$$('.provider-card').forEach((item) => item.classList.toggle('selected', item === card));
   $('#providerName').value = card.dataset.provider;
 }));
 
-$$('[data-model]').forEach((button) => button.addEventListener('click', () => {
+$$$('[data-model]').forEach((button) => button.addEventListener('click', () => {
   localStorage.setItem('thinkfast-model', button.dataset.model);
-  $$('.model-row').forEach((row) => row.classList.remove('active-model'));
+  $$$('.model-row').forEach((row) => row.classList.remove('active-model'));
   button.closest('.model-row').classList.add('active-model');
   button.textContent = 'Selected';
 }));
