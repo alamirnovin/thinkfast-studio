@@ -18,6 +18,7 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+const $$$ = $$;
 const engineUrl = 'http://127.0.0.1:8765';
 const engine = {
   health: async () => {
