@@ -1,0 +1,43 @@
+name: Test ThinkFast Studio (macOS)
+
+on:
+  workflow_dispatch:
+
+run-name: macOS GUI test · ${{ github.sha }}
+
+jobs:
+  build-macos-test:
+    name: Apple Silicon test installer
+    runs-on: macos-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Rust target
+        run: rustup target add aarch64-apple-darwin
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build included decision engine
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r engine/requirements.txt
+          python engine/generate_icon.py
+          python engine/prepare_bundled_model.py
+          python engine/build_sidecar.py aarch64-apple-darwin
+      - name: Install app packages
+        run: npm install
+      - name: Check frontend source
+        run: node --check src/main.js
+      - name: Generate application icons
+        run: npm run tauri icon src-tauri/icons/icon.svg
+      - name: Build Apple Silicon test installer
+        run: npm run tauri build -- --target aarch64-apple-darwin
+      - name: Upload Apple Silicon test installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: thinkfast-studio-macos-apple-silicon-test
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/**
+          if-no-files-found: error
