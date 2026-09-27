@@ -1,10 +1,19 @@
 const state = {
-  questions: [{ id: 'starter-question', text: 'Which team should take care of this?', type: 'choice', options: ['Billing', 'Technical support', 'Something else'], selectedForAnalysis: true }],
+  questions: [],
   records: [],
   uploads: [],
   activeUploadId: null,
   editingQuestionId: null,
-  isAnalyzing: false
+  isAnalyzing: false,
+  visibleRecords: [],
+  resultsFilter: {
+    status: 'all',
+    questionId: 'all',
+    answer: 'all',
+    confidence: 'all',
+    reviewQueueOnly: false,
+    sort: 'confidence-desc'
+  }
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -101,17 +110,46 @@ function questionOptions(answer) {
   return $$('#optionsArea input').map((input) => input.value.trim()).filter(Boolean);
 }
 
+function scoreLevelsMarkup(levels) {
+  return levels.map((level, index) => '<label class="score-level"><span>' + (index + 1) + '</span><input data-score-level value="' + escapeHtml(level) + '" aria-label="Meaning for scale level ' + (index + 1) + '" /><button class="text-button remove-score-level" type="button" data-remove-score-level="' + index + '">Remove</button></label>').join('');
+}
+
+function addScoreLevel(value = '') {
+  const levels = questionOptions('score');
+  levels.push(value || (levels.length + 1) + ' — Describe this level');
+  updateOptionArea('score', levels);
+}
+
+function bindScoreControls() {
+  $('[data-score-preset]').forEach((button) => button.addEventListener('click', () => {
+    const presets = {
+      '1-5': ['1 — Very low', '2 — Low', '3 — Middle', '4 — High', '5 — Very high'],
+      '1-10': ['1 — Lowest', '2 — Very low', '3 — Low', '4 — Somewhat low', '5 — Middle', '6 — Somewhat high', '7 — High', '8 — Very high', '9 — Near the top', '10 — Highest'],
+      'low-high': ['Low — Little or no concern', 'Medium — Some concern', 'High — Needs attention']
+    };
+    updateOptionArea('score', presets[button.dataset.scorePreset] || []);
+  }));
+  $('#addScoreLevel').addEventListener('click', () => addScoreLevel());
+  $('[data-remove-score-level]').forEach((button) => button.addEventListener('click', () => {
+    const levels = questionOptions('score');
+    if (levels.length <= 2) return;
+    levels.splice(Number(button.dataset.removeScoreLevel), 1);
+    updateOptionArea('score', levels);
+  }));
+}
+
 function updateOptionArea(answer, options = []) {
   const area = $('#optionsArea');
   if (answer === 'yesno') {
     area.innerHTML = '<div class="friendly-tip" style="margin-top:26px"><h3>Nice and simple.</h3><p>Your selected model will answer this as yes or no, with a confidence level so you can decide when a closer look is needed.</p></div>';
   } else if (answer === 'score') {
-    const low = escapeHtml(options[0] || 'Not urgent');
-    const high = escapeHtml(options[1] || 'Needs attention soon');
-    area.innerHTML = `<div class="field-label gap-label">What does each end of the scale mean?</div><div class="option-list"><label><span>LOW</span><input value="${low}" /></label><label><span>HIGH</span><input value="${high}" /></label></div>`;
+    const levels = options.length ? options : ['1 — Very low', '2 — Low', '3 — Middle', '4 — High', '5 — Very high'];
+    area.innerHTML = '<div class="field-label gap-label">Define your scale</div><p class="field-help">Choose a starting scale, then explain what every level means. You can use numbers, words, or both.</p><div class="score-presets"><button class="secondary-button" type="button" data-score-preset="1-5">Start with 1–5</button><button class="secondary-button" type="button" data-score-preset="1-10">Start with 1–10</button><button class="secondary-button" type="button" data-score-preset="low-high">Low / Medium / High</button></div><div class="option-list score-level-list" id="scoreLevelList">' + scoreLevelsMarkup(levels) + '</div><button class="text-button" id="addScoreLevel" type="button">+ Add another scale level</button>';
+    bindScoreControls();
   } else {
     const choices = options.length ? options : ['Billing', 'Technical support', 'Something else'];
-    area.innerHTML = `<div class="field-label gap-label">What are the possible answers?</div><div class="option-list" id="optionList">${choices.map((choice, index) => `<label><span>${index + 1}</span><input value="${escapeHtml(choice)}" /></label>`).join('')}</div><button class="text-button" id="addOption" type="button">+ Add another answer</button>`;
+    const inputs = choices.map((choice, index) => '<label><span>' + (index + 1) + '</span><input value="' + escapeHtml(choice) + '" /></label>').join('');
+    area.innerHTML = '<div class="field-label gap-label">What are the possible answers?</div><div class="option-list" id="optionList">' + inputs + '</div><button class="text-button" id="addOption" type="button">+ Add another answer</button>';
     $('#addOption').addEventListener('click', addOption);
   }
 }
@@ -120,14 +158,14 @@ function addOption() {
   const list = $('#optionList');
   const index = list.children.length + 1;
   const label = document.createElement('label');
-  label.innerHTML = `<span>${index}</span><input placeholder="Name this answer" />`;
+  label.innerHTML = '<span>' + index + '</span><input placeholder="Name this answer" />';
   list.append(label);
   label.querySelector('input').focus();
 }
 
 $('#addOption').addEventListener('click', addOption);
-$$('.answer-type').forEach((button) => button.addEventListener('click', () => {
-  $$('.answer-type').forEach((b) => b.classList.toggle('active', b === button));
+$('.answer-type').forEach((button) => button.addEventListener('click', () => {
+  $('.answer-type').forEach((b) => b.classList.toggle('active', b === button));
   updateOptionArea(button.dataset.answer);
 }));
 
@@ -145,7 +183,7 @@ function bindQuestionControls() {
 }
 
 function renderQuestionChips() {
-  $('#questionSetCount').textContent = `${state.questions.length} question${state.questions.length === 1 ? '' : 's'} ready`;
+  $('#questionSetCount').textContent = state.questions.length ? `${state.questions.length} question${state.questions.length === 1 ? '' : 's'} ready` : 'No questions yet';
   const list = state.questions.length ? state.questions.map(questionRow).join('') : '<p class="empty-state">No questions yet. Choose a decision type above to make one.</p>';
   $('#savedQuestionChips').innerHTML = list;
   $('#decisionQuestionList').innerHTML = list;
@@ -260,36 +298,46 @@ function renderDatasetList() {
   renderQuestionRunList();
 }
 
+function setUploadWarning(message = '') {
+  const warning = $('#uploadWarning');
+  warning.textContent = message;
+  warning.classList.toggle('hidden', !message);
+}
+
 function addDataset(file) {
   const extension = file.name.split('.').pop().toLowerCase();
-  if (extension === 'doc' || extension === 'docx') { addWordDataset(file); return; }
+  setUploadWarning('');
+  if (extension === 'doc' || extension === 'docx' || extension === 'pdf') { addExtractedDataset(file); return; }
   const reader = new FileReader();
   reader.onload = () => {
     const data = extension === 'csv'
       ? parseCSV(reader.result)
       : { headers: ['Document', 'Body text'], rows: [[file.name, reader.result]] };
     if (!data.headers.length) return;
-    const upload = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, fileName: file.name, ...data, textIndex: Math.max(0, data.headers.findIndex((header) => /text|body|message|content|description/i.test(header))) };
+    const upload = { id: Date.now() + '-' + Math.random().toString(16).slice(2), fileName: file.name, ...data, textIndex: Math.max(0, data.headers.findIndex((header) => /text|body|message|content|description/i.test(header))) };
     state.uploads.push(upload);
     state.activeUploadId = upload.id;
-    $('#uploadConfirmation').textContent = `${file.name} was added. ${data.rows.length} record${data.rows.length === 1 ? '' : 's'} will be included in this analysis.`;
+    $('#uploadConfirmation').textContent = file.name + ' was added. ' + data.rows.length + ' record' + (data.rows.length === 1 ? '' : 's') + ' will be included in this analysis.';
     syncDatasetUi();
     renderDatasetList();
   };
+  reader.onerror = () => setUploadWarning('ThinkFast Studio could not read ' + file.name + '. Please choose another file.');
   reader.readAsText(file);
 }
 
-async function addWordDataset(file) {
+async function addExtractedDataset(file) {
   try {
     const extracted = await engine.extractDocument(file);
-    const upload = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, fileName: file.name, headers: ['Document', 'Body text'], rows: [[file.name, extracted.text]], textIndex: 1 };
+    const upload = { id: Date.now() + '-' + Math.random().toString(16).slice(2), fileName: file.name, headers: ['Document', 'Body text'], rows: [[file.name, extracted.text]], textIndex: 1 };
     state.uploads.push(upload);
     state.activeUploadId = upload.id;
-    $('#uploadConfirmation').textContent = `${file.name} was added. Its document text will be included in this analysis.`;
+    $('#uploadConfirmation').textContent = file.name + ' was added. Its readable document text will be included in this analysis.';
     syncDatasetUi();
     renderDatasetList();
   } catch (error) {
-    window.alert(error.message);
+    const message = error.message || 'This document could not be read.';
+    setUploadWarning(message);
+    window.alert(message);
   }
 }
 
@@ -377,21 +425,156 @@ $('#runBatch').addEventListener('click', async () => {
   }
 });
 
-function renderResults(filter = 'all') {
-  const shown = state.records.filter((record) => filter === 'all' || record.status === filter);
-  const ready = state.records.filter((r) => r.status === 'ready').length;
-  $('#recordsReviewed').textContent = state.records.length; $('#readyCount').textContent = ready; $('#reviewCount').textContent = state.records.length - ready;
-  $('#resultsList').innerHTML = shown.map((record) => {
-    const answers = record.answers?.length ? record.answers : [{ question: 'Decision', answer: record.answer, confidence: record.confidence }];
-    return `<article class="result-card"><div><h3>${escapeHtml(record.title)}</h3><p>${escapeHtml(record.text)}</p></div><div class="result-answers">${answers.map((answer) => `<div class="result-answer"><span>${escapeHtml(answer.question)}</span><b>${escapeHtml(answer.answer)}</b><small>${answer.confidence}% confident</small></div>`).join('')}</div><div class="confidence"><strong>${record.confidence}% sure</strong><span class="${record.status}-tag">${record.status === 'ready' ? 'Ready to use' : 'Review this one'}</span></div></article>`;
-  }).join('') || '<p>When you analyze documents, your reviewable answers will appear here.</p>';
+function answersForRecord(record) {
+  return record.answers?.length ? record.answers : [{ question_id: 'decision', question: 'Decision', type: 'choice', answer: record.answer, confidence: record.confidence }];
 }
 
-$$('.filter').forEach((button) => button.addEventListener('click', () => { $$('.filter').forEach((b) => b.classList.toggle('active', b === button)); renderResults(button.dataset.filter); }));
+function questionKey(answer) {
+  return answer.question_id || answer.question;
+}
+
+function selectedQuestionAnswer(record) {
+  const answers = answersForRecord(record);
+  if (state.resultsFilter.questionId === 'all') return null;
+  return answers.find((answer) => questionKey(answer) === state.resultsFilter.questionId) || null;
+}
+
+function matchingAnswers(record) {
+  let answers = answersForRecord(record);
+  if (state.resultsFilter.questionId !== 'all') {
+    answers = answers.filter((answer) => questionKey(answer) === state.resultsFilter.questionId);
+  }
+  if (state.resultsFilter.answer !== 'all') {
+    answers = answers.filter((answer) => answer.answer === state.resultsFilter.answer);
+  }
+  return answers;
+}
+
+function scorePosition(answer) {
+  if (!answer) return Number.NEGATIVE_INFINITY;
+  const direct = Number(answer.score_position);
+  if (Number.isFinite(direct)) return direct;
+  const parsed = Number.parseFloat(answer.answer);
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+function updateResultsControls() {
+  const questionSelect = $('#resultsQuestionFilter');
+  const questionMap = new Map();
+  state.records.forEach((record) => answersForRecord(record).forEach((answer) => {
+    questionMap.set(questionKey(answer), { label: answer.question, type: answer.type });
+  }));
+  if (state.resultsFilter.questionId !== 'all' && !questionMap.has(state.resultsFilter.questionId)) state.resultsFilter.questionId = 'all';
+  questionSelect.innerHTML = '<option value="all">All questions</option>' + [...questionMap.entries()].map(([key, value]) => '<option value="' + escapeHtml(key) + '">' + escapeHtml(value.label) + '</option>').join('');
+  questionSelect.value = state.resultsFilter.questionId;
+
+  const chosen = questionMap.get(state.resultsFilter.questionId);
+  const answerLabel = $('#resultsAnswerFilterLabel');
+  answerLabel.childNodes[0].nodeValue = chosen?.type === 'score' ? 'Filter by score' : 'Filter by answer';
+  const relevantAnswers = state.records.flatMap((record) => {
+    const answers = answersForRecord(record);
+    return state.resultsFilter.questionId === 'all' ? answers : answers.filter((answer) => questionKey(answer) === state.resultsFilter.questionId);
+  });
+  const answerValues = [...new Set(relevantAnswers.map((answer) => answer.answer))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  if (state.resultsFilter.answer !== 'all' && !answerValues.includes(state.resultsFilter.answer)) state.resultsFilter.answer = 'all';
+  const answerSelect = $('#resultsAnswerFilter');
+  answerSelect.innerHTML = '<option value="all">All ' + (chosen?.type === 'score' ? 'scores' : 'answers') + '</option>' + answerValues.map((answer) => '<option value="' + escapeHtml(answer) + '">' + escapeHtml(answer) + '</option>').join('');
+  answerSelect.value = state.resultsFilter.answer;
+  $('#resultsConfidenceFilter').value = state.resultsFilter.confidence;
+  $('#resultsSort').value = state.resultsFilter.sort;
+  $('#reviewQueueOnly').checked = state.resultsFilter.reviewQueueOnly;
+}
+
+function recordConfidence(record, answers) {
+  if (state.resultsFilter.questionId !== 'all') return answers[0]?.confidence ?? record.confidence;
+  return record.confidence;
+}
+
+function filteredRecords() {
+  const shown = state.records.filter((record) => {
+    const answers = matchingAnswers(record);
+    if (!answers.length) return false;
+    if (state.resultsFilter.reviewQueueOnly && record.status !== 'review') return false;
+    if (state.resultsFilter.status !== 'all' && record.status !== state.resultsFilter.status) return false;
+    const confidence = recordConfidence(record, answers);
+    if (state.resultsFilter.confidence === 'below-50' && confidence >= 50) return false;
+    if (state.resultsFilter.confidence === 'below-75' && confidence >= 75) return false;
+    if (state.resultsFilter.confidence === 'at-least-75' && confidence < 75) return false;
+    return true;
+  });
+  return shown.sort((left, right) => {
+    const leftAnswers = matchingAnswers(left);
+    const rightAnswers = matchingAnswers(right);
+    if (state.resultsFilter.sort === 'title-asc') return String(left.title).localeCompare(String(right.title));
+    if (state.resultsFilter.sort === 'score-desc') return scorePosition(rightAnswers[0]) - scorePosition(leftAnswers[0]);
+    if (state.resultsFilter.sort === 'score-asc') return scorePosition(leftAnswers[0]) - scorePosition(rightAnswers[0]);
+    const direction = state.resultsFilter.sort === 'confidence-asc' ? 1 : -1;
+    return direction * (recordConfidence(left, leftAnswers) - recordConfidence(right, rightAnswers));
+  });
+}
+
+function renderResults() {
+  updateResultsControls();
+  const shown = filteredRecords();
+  state.visibleRecords = shown;
+  const ready = state.records.filter((record) => record.status === 'ready').length;
+  $('#recordsReviewed').textContent = state.records.length;
+  $('#readyCount').textContent = ready;
+  $('#reviewCount').textContent = state.records.length - ready;
+  const selectedName = state.resultsFilter.questionId === 'all' ? 'all questions' : $('#resultsQuestionFilter').selectedOptions[0]?.textContent || 'the selected question';
+  $('#resultsFilterSummary').textContent = shown.length + ' of ' + state.records.length + ' records shown · ' + selectedName + '.';
+  $('#resultsList').innerHTML = shown.map((record) => {
+    const answers = matchingAnswers(record);
+    const confidence = recordConfidence(record, answers);
+    return '<article class="result-card"><div><h3>' + escapeHtml(record.title) + '</h3><p>' + escapeHtml(record.text) + '</p></div><div class="result-answers">' + answers.map((answer) => '<div class="result-answer"><span>' + escapeHtml(answer.question) + '</span><b>' + escapeHtml(answer.answer) + '</b><small>' + answer.confidence + '% confident</small></div>').join('') + '</div><div class="confidence"><strong>' + confidence + '% sure</strong><span class="' + record.status + '-tag">' + (record.status === 'ready' ? 'Ready to use' : 'Review this one') + '</span></div></article>';
+  }).join('') || '<p>There are no records that match these filters.</p>';
+}
+
+$('.filter').forEach((button) => button.addEventListener('click', () => {
+  state.resultsFilter.status = button.dataset.filter;
+  if (button.dataset.filter === 'review') state.resultsFilter.reviewQueueOnly = true;
+  $('.filter').forEach((item) => item.classList.toggle('active', item === button));
+  renderResults();
+}));
+$('#resultsQuestionFilter').addEventListener('change', (event) => {
+  state.resultsFilter.questionId = event.target.value;
+  state.resultsFilter.answer = 'all';
+  renderResults();
+});
+$('#resultsAnswerFilter').addEventListener('change', (event) => {
+  state.resultsFilter.answer = event.target.value;
+  renderResults();
+});
+$('#resultsConfidenceFilter').addEventListener('change', (event) => {
+  state.resultsFilter.confidence = event.target.value;
+  renderResults();
+});
+$('#resultsSort').addEventListener('change', (event) => {
+  state.resultsFilter.sort = event.target.value;
+  renderResults();
+});
+$('#reviewQueueOnly').addEventListener('change', (event) => {
+  state.resultsFilter.reviewQueueOnly = event.target.checked;
+  if (event.target.checked) {
+    state.resultsFilter.status = 'review';
+    $('.filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === 'review'));
+  }
+  renderResults();
+});
+$('#resetResultsFilters').addEventListener('click', () => {
+  state.resultsFilter = { status: 'all', questionId: 'all', answer: 'all', confidence: 'all', reviewQueueOnly: false, sort: 'confidence-desc' };
+  $('.filter').forEach((button) => button.classList.toggle('active', button.dataset.filter === 'all'));
+  renderResults();
+});
 $('#downloadResults').addEventListener('click', () => {
-  const rows = state.records.flatMap((record) => (record.answers?.length ? record.answers : [{ question: 'Decision', answer: record.answer, confidence: record.confidence }]).map((answer) => `"${record.title.replaceAll('"','""')}","${answer.question.replaceAll('"','""')}","${answer.answer.replaceAll('"','""')}",${answer.confidence}%,${record.status === 'ready' ? 'Ready to use' : 'Needs review'}`));
+  const rows = state.visibleRecords.flatMap((record) => matchingAnswers(record).map((answer) => '"' + String(record.title).replaceAll('"', '""') + '","' + String(answer.question).replaceAll('"', '""') + '","' + String(answer.answer).replaceAll('"', '""') + '",' + answer.confidence + '%,' + (record.status === 'ready' ? 'Ready to use' : 'Needs review')));
   const csv = ['Title,Question,Decision,Confidence,Review status', ...rows].join('\n');
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const link = document.createElement('a'); link.href = url; link.download = 'thinkfast-studio-results.csv'; link.click(); URL.revokeObjectURL(url);
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'thinkfast-studio-filtered-results.csv';
+  link.click();
+  URL.revokeObjectURL(url);
 });
 
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
