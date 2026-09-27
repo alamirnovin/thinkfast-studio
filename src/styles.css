@@ -88,3 +88,7 @@ dialog form{padding:38px}.advanced-form{padding:34px!important}.advanced-tabs{ma
 .results-control-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:16px}.results-control-footer p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}.results-control-footer .text-button{margin:0;white-space:nowrap}
 @media(max-width:1000px){.result-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.score-level{grid-template-columns:25px minmax(0,1fr)!important}.score-level .remove-score-level{grid-column:2;justify-self:start}.results-controls{padding:16px}.results-controls .filter-bar{align-items:flex-start;flex-wrap:wrap;white-space:normal}.review-queue-toggle{margin-left:0;width:100%}.result-control-grid{grid-template-columns:1fr}.results-control-footer{align-items:flex-start;flex-direction:column;gap:10px}}
+
+
+.results-empty-state{margin:26px 0;padding:38px;max-width:760px;border:1px dashed #b7d1c9;border-radius:8px;background:#f5faf8}.results-empty-state .eyebrow{margin-bottom:10px}.results-empty-state h2{font:600 29px/1.16 "Playfair Display";margin:0 0 10px}.results-empty-state p{max-width:580px;margin:0;color:var(--muted);line-height:1.6}
+.primary-button:disabled{background:#8da49e;box-shadow:none;cursor:not-allowed}
