@@ -1,8 +1,10 @@
 const state = {
-  questions: [{ text: 'Which team should take care of this?', type: 'choice', options: ['Billing', 'Technical support', 'Something else'] }],
+  questions: [{ id: 'starter-question', text: 'Which team should take care of this?', type: 'choice', options: ['Billing', 'Technical support', 'Something else'], selectedForAnalysis: true }],
   records: [],
   uploads: [],
-  activeUploadId: null
+  activeUploadId: null,
+  editingQuestionId: null,
+  isAnalyzing: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -112,23 +114,26 @@ $$('.decision-card').forEach((card) => card.addEventListener('click', () => {
   $$('.decision-card').forEach((c) => c.classList.remove('selected'));
   card.classList.add('selected');
   const kind = card.dataset.type;
-  const target = kind === 'yesno' ? 'yesno' : kind;
-  $$('.answer-type').forEach((b) => b.classList.toggle('active', b.dataset.answer === target));
+  beginNewQuestion(kind);
   goTo('builder');
 }));
 
-function optionFields() {
-  return $$('#optionList input').map((input) => input.value.trim()).filter(Boolean);
+function questionOptions(answer) {
+  if (answer === 'yesno') return ['Yes', 'No'];
+  return $$('#optionsArea input').map((input) => input.value.trim()).filter(Boolean);
 }
 
-function updateOptionArea(answer) {
+function updateOptionArea(answer, options = []) {
   const area = $('#optionsArea');
   if (answer === 'yesno') {
     area.innerHTML = '<div class="friendly-tip" style="margin-top:26px"><h3>Nice and simple.</h3><p>Your selected model will answer this as yes or no, with a confidence level so you can decide when a closer look is needed.</p></div>';
   } else if (answer === 'score') {
-    area.innerHTML = '<div class="field-label gap-label">What does each end of the scale mean?</div><div class="option-list"><label><span>LOW</span><input value="Not urgent" /></label><label><span>HIGH</span><input value="Needs attention soon" /></label></div>';
+    const low = escapeHtml(options[0] || 'Not urgent');
+    const high = escapeHtml(options[1] || 'Needs attention soon');
+    area.innerHTML = `<div class="field-label gap-label">What does each end of the scale mean?</div><div class="option-list"><label><span>LOW</span><input value="${low}" /></label><label><span>HIGH</span><input value="${high}" /></label></div>`;
   } else {
-    area.innerHTML = '<div class="field-label gap-label">What are the possible answers?</div><div class="option-list" id="optionList"><label><span>1</span><input value="Billing" /></label><label><span>2</span><input value="Technical support" /></label><label><span>3</span><input value="Something else" /></label></div><button class="text-button" id="addOption">+ Add another answer</button>';
+    const choices = options.length ? options : ['Billing', 'Technical support', 'Something else'];
+    area.innerHTML = `<div class="field-label gap-label">What are the possible answers?</div><div class="option-list" id="optionList">${choices.map((choice, index) => `<label><span>${index + 1}</span><input value="${escapeHtml(choice)}" /></label>`).join('')}</div><button class="text-button" id="addOption" type="button">+ Add another answer</button>`;
     $('#addOption').addEventListener('click', addOption);
   }
 }
@@ -148,19 +153,70 @@ $$('.answer-type').forEach((button) => button.addEventListener('click', () => {
   updateOptionArea(button.dataset.answer);
 }));
 
+function questionTypeLabel(type) {
+  return { choice: 'Multiple choice', score: 'Score', yesno: 'Yes or no' }[type] || 'Question';
+}
+
+function questionRow(question) {
+  return `<article class="question-row"><div><b>${escapeHtml(question.text)}</b><small>${questionTypeLabel(question.type)}${question.selectedForAnalysis ? ' · selected for analysis' : ' · not selected'}</small></div><div class="question-actions"><button class="secondary-button" type="button" data-edit-question="${question.id}">Edit</button><button class="text-button delete-question" type="button" data-delete-question="${question.id}">Delete</button></div></article>`;
+}
+
+function bindQuestionControls() {
+  $$('[data-edit-question]').forEach((button) => button.addEventListener('click', () => editQuestion(button.dataset.editQuestion)));
+  $$('[data-delete-question]').forEach((button) => button.addEventListener('click', () => deleteQuestion(button.dataset.deleteQuestion)));
+}
+
 function renderQuestionChips() {
   $('#questionSetCount').textContent = `${state.questions.length} question${state.questions.length === 1 ? '' : 's'} ready`;
-  $('#savedQuestionChips').innerHTML = state.questions.map((q) => `<span>${escapeHtml(q.text)}</span>`).join('');
+  const list = state.questions.length ? state.questions.map(questionRow).join('') : '<p class="empty-state">No questions yet. Choose a decision type above to make one.</p>';
+  $('#savedQuestionChips').innerHTML = list;
+  $('#decisionQuestionList').innerHTML = list;
+  bindQuestionControls();
+  renderQuestionRunList();
+}
+
+function beginNewQuestion(type = $('.answer-type.active').dataset.answer) {
+  state.editingQuestionId = null;
+  $('#questionText').value = '';
+  $$('.answer-type').forEach((button) => button.classList.toggle('active', button.dataset.answer === type));
+  updateOptionArea(type);
+  $('#saveQuestion').innerHTML = 'Save this question <span>→</span>';
+}
+
+function editQuestion(id) {
+  const question = state.questions.find((item) => item.id === id);
+  if (!question) return;
+  state.editingQuestionId = id;
+  $('#questionText').value = question.text;
+  $$('.answer-type').forEach((button) => button.classList.toggle('active', button.dataset.answer === question.type));
+  updateOptionArea(question.type, question.options);
+  $('#saveQuestion').innerHTML = 'Save changes <span>→</span>';
+  goTo('builder');
+  $('#questionText').focus();
+}
+
+function deleteQuestion(id) {
+  const question = state.questions.find((item) => item.id === id);
+  if (!question || !window.confirm(`Delete this question?\n\n${question.text}`)) return;
+  state.questions = state.questions.filter((item) => item.id !== id);
+  if (state.editingQuestionId === id) beginNewQuestion();
+  renderQuestionChips();
 }
 
 $('#saveQuestion').addEventListener('click', () => {
   const text = $('#questionText').value.trim();
   const selected = $('.answer-type.active').dataset.answer;
   if (!text) { $('#questionText').focus(); return; }
-  state.questions.push({ text, type: selected, options: selected === 'choice' ? optionFields() : [] });
+  const options = questionOptions(selected);
+  if ((selected === 'choice' || selected === 'score') && options.length < 2) { $('#optionsArea input').focus(); return; }
+  const existing = state.questions.find((item) => item.id === state.editingQuestionId);
+  const question = { id: existing?.id || `question-${Date.now()}-${Math.random().toString(16).slice(2)}`, text, type: selected, options, selectedForAnalysis: existing?.selectedForAnalysis ?? true };
+  if (existing) state.questions = state.questions.map((item) => item.id === existing.id ? question : item);
+  else state.questions.push(question);
   renderQuestionChips();
   $('#questionText').value = '';
-  $('#saveQuestion').textContent = 'Saved — add another?';
+  state.editingQuestionId = null;
+  $('#saveQuestion').textContent = existing ? 'Changes saved' : 'Saved — add another?';
   setTimeout(() => { $('#saveQuestion').innerHTML = 'Save this question <span>→</span>'; }, 1800);
 });
 
@@ -177,12 +233,33 @@ function renderUploadPreview(upload) {
   $('#previewTable').innerHTML = `<thead><tr>${upload.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${upload.rows.slice(0, 5).map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>`;
 }
 
+function renderQuestionRunList() {
+  const list = $('#questionRunList');
+  if (!state.questions.length) {
+    list.innerHTML = '<p class="empty-state">Create a question in Decision choices before running an analysis.</p>';
+    return;
+  }
+  list.innerHTML = state.questions.map((question) => `<label class="question-run-option"><input type="checkbox" data-run-question="${question.id}" ${question.selectedForAnalysis ? 'checked' : ''} ${state.isAnalyzing ? 'disabled' : ''} /><span><b>${escapeHtml(question.text)}</b><small>${questionTypeLabel(question.type)}</small></span></label>`).join('');
+  $$('[data-run-question]').forEach((input) => input.addEventListener('change', () => {
+    const question = state.questions.find((item) => item.id === input.dataset.runQuestion);
+    if (question) question.selectedForAnalysis = input.checked;
+    renderQuestionChips();
+  }));
+}
+
+function syncDatasetUi() {
+  const hasUploads = state.uploads.length > 0;
+  $('#filePicker').classList.toggle('hidden', hasUploads);
+  $('#batchPreview').classList.toggle('hidden', !hasUploads);
+  if (!hasUploads) $('#previewTable').innerHTML = '';
+}
+
 function renderDatasetList() {
   const uploads = state.uploads;
   const recordCount = uploads.reduce((total, upload) => total + upload.rows.length, 0);
   $('#fileName').textContent = `${uploads.length} dataset${uploads.length === 1 ? '' : 's'} selected`;
   $('#rowCount').textContent = `${recordCount} record${recordCount === 1 ? '' : 's'} found`;
-  $('#datasetList').innerHTML = uploads.map((upload) => `<article class="dataset-row ${upload.id === state.activeUploadId ? 'active-dataset' : ''}"><div><b>${escapeHtml(upload.fileName)}</b><small>${upload.rows.length} record${upload.rows.length === 1 ? '' : 's'} · ${upload.headers.length} column${upload.headers.length === 1 ? '' : 's'}</small></div><label>Text column<select data-text-column="${upload.id}">${upload.headers.map((header, index) => `<option value="${index}" ${index === upload.textIndex ? 'selected' : ''}>${escapeHtml(header)}</option>`).join('')}</select></label><button class="text-button preview-dataset" type="button" data-preview-upload="${upload.id}">Preview</button></article>`).join('');
+  $('#datasetList').innerHTML = uploads.map((upload) => `<article class="dataset-row ${upload.id === state.activeUploadId ? 'active-dataset' : ''}"><div><b>${escapeHtml(upload.fileName)}</b><small>${upload.rows.length} record${upload.rows.length === 1 ? '' : 's'} · ${upload.headers.length} column${upload.headers.length === 1 ? '' : 's'}</small></div><label>Text column<select data-text-column="${upload.id}" ${state.isAnalyzing ? 'disabled' : ''}>${upload.headers.map((header, index) => `<option value="${index}" ${index === upload.textIndex ? 'selected' : ''}>${escapeHtml(header)}</option>`).join('')}</select></label><div class="dataset-row-actions"><button class="text-button preview-dataset" type="button" data-preview-upload="${upload.id}">Preview</button><button class="text-button delete-dataset" type="button" data-delete-upload="${upload.id}" ${state.isAnalyzing ? 'disabled' : ''}>Delete</button></div></article>`).join('');
   $$('#datasetList [data-text-column]').forEach((select) => select.addEventListener('change', () => {
     const upload = state.uploads.find((item) => item.id === select.dataset.textColumn);
     upload.textIndex = Number(select.value);
@@ -192,7 +269,17 @@ function renderDatasetList() {
     renderDatasetList();
     renderUploadPreview(state.uploads.find((item) => item.id === state.activeUploadId));
   }));
+  $$('#datasetList [data-delete-upload]').forEach((button) => button.addEventListener('click', () => {
+    const upload = state.uploads.find((item) => item.id === button.dataset.deleteUpload);
+    if (!upload || !window.confirm(`Remove ${upload.fileName} from this analysis?`)) return;
+    state.uploads = state.uploads.filter((item) => item.id !== upload.id);
+    state.activeUploadId = state.uploads[0]?.id || null;
+    $('#uploadConfirmation').textContent = state.uploads.length ? `${upload.fileName} was removed.` : 'Dataset removed. Choose new files to start again.';
+    syncDatasetUi();
+    renderDatasetList();
+  }));
   renderUploadPreview(uploads.find((item) => item.id === state.activeUploadId) || uploads[0]);
+  renderQuestionRunList();
 }
 
 function addDataset(file) {
@@ -208,7 +295,7 @@ function addDataset(file) {
     state.uploads.push(upload);
     state.activeUploadId = upload.id;
     $('#uploadConfirmation').textContent = `${file.name} was added. ${data.rows.length} record${data.rows.length === 1 ? '' : 's'} will be included in this analysis.`;
-    $('#dropZone').classList.add('hidden'); $('#batchPreview').classList.remove('hidden');
+    syncDatasetUi();
     renderDatasetList();
   };
   reader.readAsText(file);
@@ -221,17 +308,13 @@ async function addWordDataset(file) {
     state.uploads.push(upload);
     state.activeUploadId = upload.id;
     $('#uploadConfirmation').textContent = `${file.name} was added. Its document text will be included in this analysis.`;
-    $('#dropZone').classList.add('hidden'); $('#batchPreview').classList.remove('hidden');
+    syncDatasetUi();
     renderDatasetList();
   } catch (error) {
     window.alert(error.message);
   }
 }
 
-const dropZone = $('#dropZone');
-['dragenter','dragover'].forEach((event) => dropZone.addEventListener(event, (e) => { e.preventDefault(); dropZone.classList.add('drag'); }));
-['dragleave','drop'].forEach((event) => dropZone.addEventListener(event, (e) => { e.preventDefault(); dropZone.classList.remove('drag'); }));
-dropZone.addEventListener('drop', (event) => [...event.dataTransfer.files].forEach(addDataset));
 $('#chooseFile').addEventListener('click', () => $('#fileInput').click());
 $('#addDataset').addEventListener('click', () => $('#fileInput').click());
 $('#fileInput').addEventListener('change', (event) => {
@@ -242,38 +325,94 @@ $('#clearDatasets').addEventListener('click', () => {
   state.uploads = [];
   state.activeUploadId = null;
   $('#uploadConfirmation').textContent = 'All datasets were cleared. Choose new files to start again.';
-  $('#batchPreview').classList.add('hidden');
-  $('#dropZone').classList.remove('hidden');
-  $('#previewTable').innerHTML = '';
+  syncDatasetUi();
+});
+
+function setProcessing(active, completed = 0, total = 0) {
+  $('#processingState').classList.toggle('hidden', !active);
+  if (!active) return;
+  const percentage = total ? Math.round((completed / total) * 100) : 0;
+  $('#processingLabel').textContent = `Processing data · ${percentage}%`;
+  $('#processingDetail').textContent = total ? `${completed} of ${total} documents complete` : 'Preparing your selected questions…';
+}
+
+function setBatchControls(disabled) {
+  $('#runBatch').disabled = disabled;
+  $('#addDataset').disabled = disabled;
+  $('#clearDatasets').disabled = disabled;
+  $('#selectAllQuestions').disabled = disabled;
+  $('#deselectAllQuestions').disabled = disabled;
+  renderDatasetList();
+  renderQuestionRunList();
+}
+
+$('#selectAllQuestions').addEventListener('click', () => {
+  state.questions.forEach((question) => { question.selectedForAnalysis = true; });
+  renderQuestionChips();
+});
+$('#deselectAllQuestions').addEventListener('click', () => {
+  state.questions.forEach((question) => { question.selectedForAnalysis = false; });
+  renderQuestionChips();
 });
 
 $('#runBatch').addEventListener('click', async () => {
   if (!state.uploads.length) { goTo('batch'); return; }
-  $('#runBatch').textContent = 'Reading your documents…';
+  const selectedQuestions = state.questions.filter((question) => question.selectedForAnalysis);
+  if (!selectedQuestions.length) {
+    $('#uploadConfirmation').textContent = 'Select at least one question before running this analysis.';
+    $('#questionRunHeading').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
   const records = state.uploads.flatMap((upload) => {
     const titleIndex = Math.max(0, upload.headers.findIndex((header) => /title|name|id/i.test(header)));
     return upload.rows.map((row, index) => ({
       title: row[titleIndex] || `${upload.fileName} — document ${index + 1}`,
       text: row[upload.textIndex],
-      questions: state.questions
+      questions: selectedQuestions.map(({ id, text, type, options }) => ({ id, text, type, options }))
     }));
   }).filter((record) => record.text && record.text.trim());
-  try { state.records = await engine.analyze(records);
-  } catch (error) { $('#settingsDialog').showModal(); $('#installStatus').textContent = error.message; $('#runBatch').innerHTML = 'Run analysis <span>→</span>'; return; }
-  $('#runBatch').innerHTML = 'Run analysis <span>→</span>';
-  renderResults(); goTo('results');
+  if (!records.length) { $('#uploadConfirmation').textContent = 'The selected datasets do not contain readable text to analyze.'; return; }
+  state.isAnalyzing = true;
+  $('#runBatch').textContent = 'Processing data…';
+  setBatchControls(true);
+  setProcessing(true, 0, records.length);
+  try {
+    const completedRecords = [];
+    const chunkSize = 8;
+    for (let start = 0; start < records.length; start += chunkSize) {
+      const chunk = records.slice(start, start + chunkSize);
+      const response = await engine.analyze(chunk);
+      completedRecords.push(...response);
+      setProcessing(true, Math.min(start + chunk.length, records.length), records.length);
+    }
+    state.records = completedRecords;
+    renderResults();
+    goTo('results');
+  } catch (error) {
+    $('#settingsDialog').showModal();
+    $('#installStatus').textContent = error.message;
+  } finally {
+    state.isAnalyzing = false;
+    setProcessing(false);
+    setBatchControls(false);
+    $('#runBatch').innerHTML = 'Run selected questions <span>→</span>';
+  }
 });
 
 function renderResults(filter = 'all') {
   const shown = state.records.filter((record) => filter === 'all' || record.status === filter);
   const ready = state.records.filter((r) => r.status === 'ready').length;
   $('#recordsReviewed').textContent = state.records.length; $('#readyCount').textContent = ready; $('#reviewCount').textContent = state.records.length - ready;
-  $('#resultsList').innerHTML = shown.map((record) => `<article class="result-card"><div><h3>${escapeHtml(record.title)}</h3><p>${escapeHtml(record.text)}</p></div><div class="result-answer"><b>${escapeHtml(record.answer)}</b><span>Best matching answer</span></div><div class="confidence"><strong>${record.confidence}% sure</strong><span class="${record.status}-tag">${record.status === 'ready' ? 'Ready to use' : 'Review this one'}</span></div></article>`).join('') || '<p>When you analyze documents, your reviewable answers will appear here.</p>';
+  $('#resultsList').innerHTML = shown.map((record) => {
+    const answers = record.answers?.length ? record.answers : [{ question: 'Decision', answer: record.answer, confidence: record.confidence }];
+    return `<article class="result-card"><div><h3>${escapeHtml(record.title)}</h3><p>${escapeHtml(record.text)}</p></div><div class="result-answers">${answers.map((answer) => `<div class="result-answer"><span>${escapeHtml(answer.question)}</span><b>${escapeHtml(answer.answer)}</b><small>${answer.confidence}% confident</small></div>`).join('')}</div><div class="confidence"><strong>${record.confidence}% sure</strong><span class="${record.status}-tag">${record.status === 'ready' ? 'Ready to use' : 'Review this one'}</span></div></article>`;
+  }).join('') || '<p>When you analyze documents, your reviewable answers will appear here.</p>';
 }
 
 $$('.filter').forEach((button) => button.addEventListener('click', () => { $$('.filter').forEach((b) => b.classList.toggle('active', b === button)); renderResults(button.dataset.filter); }));
 $('#downloadResults').addEventListener('click', () => {
-  const csv = ['Title,Decision,Confidence,Review status', ...state.records.map((r) => `"${r.title.replaceAll('"','""')}","${r.answer}",${r.confidence}%,${r.status === 'ready' ? 'Ready to use' : 'Needs review'}`)].join('\n');
+  const rows = state.records.flatMap((record) => (record.answers?.length ? record.answers : [{ question: 'Decision', answer: record.answer, confidence: record.confidence }]).map((answer) => `"${record.title.replaceAll('"','""')}","${answer.question.replaceAll('"','""')}","${answer.answer.replaceAll('"','""')}",${answer.confidence}%,${record.status === 'ready' ? 'Ready to use' : 'Needs review'}`));
+  const csv = ['Title,Question,Decision,Confidence,Review status', ...rows].join('\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const link = document.createElement('a'); link.href = url; link.download = 'thinkfast-studio-results.csv'; link.click(); URL.revokeObjectURL(url);
 });
 
@@ -337,4 +476,5 @@ async function beginInstall() {
 }
 
 $('#installEngine').addEventListener('click', beginInstall);
+beginNewQuestion('choice');
 renderQuestionChips(); renderResults(); refreshEngineStatus();
