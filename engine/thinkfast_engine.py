@@ -164,7 +164,7 @@ def questions_for_local_model(questions: list[dict]) -> dict:
         if kind == "yesno":
             built[key] = {"type": "noul", "instructions": question["text"]}
         elif kind == "score":
-            built[key] = {"type": "score", "instructions": question["text"], "criteria": ["low", "high"]}
+            built[key] = {"type": "score", "instructions": question["text"], "criteria": question.get("options") or ["low", "high"]}
         else:
             choices = question.get("options") or ["Yes", "No"]
             built[key] = {"type": "choice", "instructions": question["text"], "criteria": {choice: choice for choice in choices}}
@@ -210,11 +210,24 @@ def analyze(request: AnalyzeRequest):
         raise HTTPException(status_code=409, detail="Install the decision engine first.")
     results = []
     for record in request.records:
-        output = router.predict(record["text"], questions_for_local_model(record["questions"]))
-        first = next(iter(output["answers"].values()))
-        answer = first.get("choice", first.get("noul", first.get("score", "Needs review")))
-        confidence = round(float(first.get("confidence", first.get("probability", 0.5))) * 100)
-        results.append({"title": record["title"], "text": record["text"], "answer": str(answer), "confidence": confidence, "status": "ready" if confidence >= 75 else "review"})
+        questions = record.get("questions") or []
+        if not questions:
+            raise HTTPException(status_code=422, detail="Choose at least one question before starting an analysis.")
+        output = router.predict(record["text"], questions_for_local_model(questions))
+        answers = []
+        for index, question in enumerate(questions):
+            raw_answer = output["answers"].get(f"question_{index + 1}", {})
+            answer = raw_answer.get("choice", raw_answer.get("noul", raw_answer.get("score", "Needs review")))
+            confidence = round(float(raw_answer.get("confidence", raw_answer.get("probability", 0.5))) * 100)
+            answers.append({
+                "question_id": str(question.get("id", f"question_{index + 1}")),
+                "question": str(question.get("text", f"Question {index + 1}")),
+                "answer": str(answer),
+                "confidence": confidence,
+            })
+        first = answers[0]
+        overall_confidence = min(answer["confidence"] for answer in answers)
+        results.append({"title": record["title"], "text": record["text"], "answer": first["answer"], "confidence": overall_confidence, "answers": answers, "status": "ready" if overall_confidence >= 75 else "review"})
     return results
 
 if __name__ == "__main__":
