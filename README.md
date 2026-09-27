@@ -1,6 +1,6 @@
 # ThinkFast Studio
 
-A warm, plain-language Tauri desktop interface for structured decision workflows.
+A easy to use desktop GUI for structured decision workflows.
 
 Created by Alamir Novin.
 
@@ -8,7 +8,7 @@ Created by Alamir Novin.
 
 - Lets a user build decisions using ordinary language rather than JSON.
 - Supports choice, scale, and yes/no decision formats.
-- Imports CSV files or a text document through Documents to Analyze.
+- Imports DOCs, PDFs (if accessible), CSV files or almost any text document through Documents to Analyze.
 - Is designed to read Word (`.docx`) documents in the packaged desktop app.
 - Shows understandable results, confidence, and a manual-review queue.
 - Exports the visible results as a CSV file.
@@ -34,8 +34,6 @@ Long documents are split into manageable passages before the selected local mode
 npm install
 npm run dev
 ```
-
-## Build it as a Tauri desktop app
 
 Install Rust and the platform prerequisites from the Tauri documentation, then run:
 
