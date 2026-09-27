@@ -18,9 +18,17 @@ def main():
     if len(sys.argv) != 2:
         raise SystemExit("Usage: python engine/smoke_sidecar.py PATH_TO_ENGINE")
 
-    executable = Path(sys.argv[1])
+    location = Path(sys.argv[1])
+    if location.is_dir():
+        candidates = sorted(location.glob("thinkfast-engine-*"))
+        if len(candidates) != 1:
+            raise SystemExit(f"Expected one engine executable in {location}, found {len(candidates)}.")
+        executable = candidates[0]
+    else:
+        executable = location
     if not executable.is_file():
         raise SystemExit(f"Engine executable was not found: {executable}")
+    executable = executable.resolve()
 
     process = subprocess.Popen(
         [str(executable)],
