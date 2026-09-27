@@ -16,19 +16,6 @@ const engine = {
     if (!response.ok) throw new Error('The local engine did not respond.');
     return response.json();
   },
-  install: async () => {
-    const response = await fetch(`${engineUrl}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ multilingual: false }) });
-    if (!response.ok) {
-      const detail = await response.json().catch(() => ({}));
-      throw new Error(detail.detail || 'The model download could not be completed.');
-    }
-    return response.json();
-  },
-  installStatus: async () => {
-    const response = await fetch(`${engineUrl}/install/status`);
-    if (!response.ok) throw new Error('The local model installer did not respond.');
-    return response.json();
-  },
   extractDocument: async (file) => {
     const content = await file.arrayBuffer();
     const bytes = new Uint8Array(content);
@@ -45,7 +32,7 @@ const engine = {
     const response = await fetch(`${engineUrl}/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ records }) });
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
-      throw new Error(detail.detail || 'Install the decision engine before analyzing documents.');
+      throw new Error(detail.detail || 'The included decision engine is still starting. Please wait a moment and try again.');
     }
     return response.json();
   }
@@ -59,44 +46,35 @@ function setEngineIndicator(text, ready = false) {
 
 const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function watchModelInstallation(onUpdate) {
-  for (let attempt = 0; attempt < 3600; attempt += 1) {
-    const status = await engine.installStatus();
-    onUpdate(status);
-    if (status.state === 'ready') return status;
-    if (status.state === 'failed') throw new Error(status.error || status.message);
-    await pause(750);
-  }
-  throw new Error('The download took longer than expected. Keep the app open and try again.');
-}
-
-async function installRecommendedModel(onUpdate) {
-  const health = await waitForEngine();
-  if (health.ready) {
-    const status = { state: 'ready', percent: 100, message: 'Your local model is ready.' };
-    onUpdate(status);
-    return status;
-  }
-  await engine.install();
-  return watchModelInstallation(onUpdate);
-}
-
 async function waitForEngine() {
   let lastError;
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     try { return await engine.health(); }
-    catch (error) { lastError = error; await new Promise((resolve) => setTimeout(resolve, 500)); }
+    catch (error) { lastError = error; await pause(500); }
   }
   throw lastError || new Error('The local engine did not start.');
 }
 
 async function refreshEngineStatus() {
   try {
-    const health = await waitForEngine();
-    setEngineIndicator(health.ready ? 'Decision engine ready' : 'Decision engine ready to download', health.ready);
-    return health;
+    let health = await waitForEngine();
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      if (health.ready) {
+        setEngineIndicator('Included decision engine ready', true);
+        $('#modelStatus').textContent = 'Included decision engine ready.';
+        return health;
+      }
+      const status = health.install || {};
+      setEngineIndicator(status.message || 'Starting included decision engine…');
+      $('#modelStatus').textContent = status.message || 'Starting included decision engine…';
+      if (status.state === 'failed') throw new Error(status.error || status.message);
+      await pause(1000);
+      health = await engine.health();
+    }
+    throw new Error('The included decision engine took too long to start.');
   } catch {
     setEngineIndicator('Decision engine is unavailable');
+    $('#modelStatus').textContent = 'The included decision engine could not start. Quit ThinkFast Studio, then open it again.';
     return null;
   }
 }
@@ -390,7 +368,7 @@ $('#runBatch').addEventListener('click', async () => {
     goTo('results');
   } catch (error) {
     $('#settingsDialog').showModal();
-    $('#installStatus').textContent = error.message;
+    $('#modelStatus').textContent = error.message;
   } finally {
     state.isAnalyzing = false;
     setProcessing(false);
@@ -449,32 +427,5 @@ $('#saveAdvanced').addEventListener('click', () => {
   const workspace = Object.fromEntries(['inputMode','decisionStrategy','outputDetail','languageRoute','confidenceThreshold','reviewAction','batchSize','comparisonMode'].map((id) => [id, $(`#${id}`).value]));
   localStorage.setItem('thinkfast-workspace', JSON.stringify(workspace));
 });
-let installInProgress = false;
-async function beginInstall() {
-  if (installInProgress) return;
-  installInProgress = true;
-  const button = $('#installEngine');
-  button.disabled = true;
-  button.textContent = 'Starting download…';
-  $('#installStatus').textContent = 'Connecting to the private local engine…';
-  try {
-    await installRecommendedModel((status) => {
-      button.textContent = status.state === 'ready' ? 'Local model ready' : `Downloading model… ${status.percent || 0}%`;
-      $('#installStatus').textContent = status.message;
-    });
-    button.textContent = 'Local model ready';
-    $('#installStatus').textContent = 'Your recommended local model is installed and ready to analyze documents privately.';
-    setEngineIndicator('Decision engine ready', true);
-  } catch (error) {
-    button.innerHTML = 'Try download again <span>↓</span>';
-    $('#installStatus').textContent = `${error.message} Keep ThinkFast Studio open, then try again.`;
-    setEngineIndicator('Decision engine is unavailable');
-  } finally {
-    button.disabled = false;
-    installInProgress = false;
-  }
-}
-
-$('#installEngine').addEventListener('click', beginInstall);
 beginNewQuestion('choice');
 renderQuestionChips(); renderResults(); refreshEngineStatus();
