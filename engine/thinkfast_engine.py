@@ -70,8 +70,18 @@ def document_text(filename: str, content: bytes) -> str:
             raise ValueError("This .docx file could not be read.") from exc
     elif suffix == ".doc":
         text = legacy_word_text(content)
+    elif suffix == ".pdf":
+        try:
+            from pypdf import PdfReader
+
+            reader = PdfReader(io.BytesIO(content))
+            text = "\n".join((page.extract_text() or "").strip() for page in reader.pages).strip()
+        except Exception as exc:
+            raise ValueError("This PDF could not be read. It may be damaged or needs an OCR copy.") from exc
+        if len(re.sub(r"\s+", "", text)) < 20:
+            raise ValueError("No readable text was found in this PDF. It may be a scanned PDF; use OCR to make a searchable PDF, then upload it again.")
     else:
-        raise ValueError("Only .doc and .docx Word documents can be extracted here.")
+        raise ValueError("Only Word documents and PDFs can be extracted here.")
     if not text.strip():
         raise ValueError("This Word document does not contain readable body text.")
     return text
@@ -153,12 +163,27 @@ def analyze(request: AnalyzeRequest):
             raw_answer = output["answers"].get(f"question_{index + 1}", {})
             answer = raw_answer.get("choice", raw_answer.get("noul", raw_answer.get("score", "Needs review")))
             confidence = round(float(raw_answer.get("confidence", raw_answer.get("probability", 0.5))) * 100)
-            answers.append({
-                "question_id": str(question.get("id", f"question_{index + 1}")),
-                "question": str(question.get("text", f"Question {index + 1}")),
-                "answer": str(answer),
-                "confidence": confidence,
-            })
+            answer_entry = {
+            "question_id": str(question.get("id", f"question_{index + 1}")),
+            "question": str(question.get("text", f"Question {index + 1}")),
+            "type": kind,
+            "answer": str(answer),
+            "confidence": confidence,
+        }
+        if kind == "score":
+            levels = [str(level) for level in question.get("options") or []]
+            answer_entry["scale_levels"] = levels
+            score_position = None
+            try:
+                score_position = float(raw_answer.get("score"))
+            except (TypeError, ValueError):
+                normalized_answer = str(answer).strip().casefold()
+                for position, level in enumerate(levels, start=1):
+                    if normalized_answer == level.strip().casefold():
+                        score_position = float(position)
+                        break
+            answer_entry["score_position"] = score_position
+        answers.append(answer_entry)
         first = answers[0]
         overall_confidence = min(answer["confidence"] for answer in answers)
         results.append({"title": record["title"], "text": record["text"], "answer": first["answer"], "confidence": overall_confidence, "answers": answers, "status": "ready" if overall_confidence >= 75 else "review"})
