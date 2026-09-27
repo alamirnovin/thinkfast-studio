@@ -65,3 +65,13 @@ textarea:focus,input:focus,select:focus{outline-color:#efb4c4;border-color:var(-
 .result-answers{display:grid;gap:7px}.result-answers .result-answer{border-left:2px solid #e8a0b5;padding-left:10px}.result-answers .result-answer span{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}.result-answers .result-answer b{margin:0}.result-answers .result-answer small{font:11px "DM Mono";color:var(--muted)}
 button:disabled{opacity:.55;cursor:wait}.dataset-row-actions button:disabled{cursor:not-allowed}
 @media(max-width:800px){.file-picker{grid-template-columns:1fr;align-items:start}.file-picker .primary-button{justify-self:start}.question-library{padding:22px}.question-row,.question-run-heading{align-items:flex-start;flex-direction:column}.question-actions,.dataset-row-actions{width:100%}.question-selection-actions{margin-top:4px}.compact-question-list{width:100%}}
+
+main{max-width:1440px;padding:clamp(46px,5.5vw,84px) clamp(32px,6vw,104px)}
+.page-heading{margin-bottom:38px}.decision-grid{gap:18px}.sample-row{margin-top:46px;gap:52px;padding:46px 54px}
+.question-library{margin-top:38px;margin-bottom:46px;padding:30px}.question-library .question-list{margin-top:22px}
+.builder-layout{gap:34px}.builder-panel{padding:34px}.saved-questions{margin-top:34px;padding-top:30px;gap:34px}
+.file-picker{margin-top:8px;padding:32px}.document-note{margin:16px 2px 26px}.batch-preview{padding:30px}.dataset-actions{margin:20px 0}.dataset-list{margin:20px 0}.dataset-row{padding:16px;gap:16px}.question-run-panel{margin:30px 0 26px;padding:26px}.question-run-list{margin-top:20px}.question-run-option{padding:14px 15px}.processing-state{margin:22px 0;padding:16px 18px}
+.result-summary{margin-bottom:32px}.result-card{grid-template-columns:minmax(230px,1fr) minmax(220px,1fr) 138px;gap:24px;padding:24px 10px}.result-answers{gap:10px}
+dialog form{padding:38px}.advanced-form{padding:34px!important}.advanced-tabs{margin:30px 0 24px}.model-row{padding:17px}.provider-grid{gap:10px}.setting-grid{gap:18px}
+@media(max-width:1000px){main{padding:46px 34px}.sample-row{gap:32px;padding:38px}.result-card{grid-template-columns:1fr 1fr}.result-card .confidence{grid-column:2;text-align:left}.dataset-row{grid-template-columns:minmax(0,1fr) 190px auto}}
+@media(max-width:800px){main{padding:42px 22px}.page-heading{margin-bottom:30px}.question-library,.builder-panel,.batch-preview{padding:22px}.sample-row{margin-top:34px;padding:28px}.dataset-row{padding:14px}.question-run-panel{padding:20px}.result-card{padding:20px 0}.result-card .confidence{grid-column:auto}.question-actions .secondary-button{padding:8px 11px}}
