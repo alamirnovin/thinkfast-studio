@@ -39,6 +39,7 @@ jobs:
           python engine/generate_icon.py
           python engine/prepare_bundled_model.py
           python engine/build_sidecar.py ${{ matrix.target }}
+          python engine/smoke_sidecar.py src-tauri/binaries
       - name: Install app packages
         run: npm install
       - name: Generate platform application icons
